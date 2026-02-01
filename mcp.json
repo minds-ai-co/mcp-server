@@ -1,0 +1,40 @@
+{
+  "name": "mindsai-personas",
+  "version": "1.0.0",
+  "description": "Create AI personas, digital twins, and expert advisors. Train AI on people, topics, or websites. Chat with your custom AI experts.",
+  "author": "Minds AI",
+  "homepage": "https://getminds.ai",
+  "repository": "https://github.com/mindsai/mcp-server",
+  "transport": "stdio",
+  "tools": [
+    {
+      "name": "create_ai_persona_or_digital_twin",
+      "description": "Create a custom AI persona, digital twin, or expert advisor trained on any topic"
+    },
+    {
+      "name": "talk_to_ai_persona",
+      "description": "Chat with your created AI personas and get expert advice"
+    },
+    {
+      "name": "list_ai_personas",
+      "description": "List all your created AI personas and digital twins"
+    },
+    {
+      "name": "check_ai_persona_training_progress",
+      "description": "Check the training status of your AI persona"
+    }
+  ],
+  "resources": [
+    {
+      "name": "ai-persona-widget",
+      "uri": "ui://widget/spark.html",
+      "description": "Interactive widget for creating and chatting with AI personas"
+    }
+  ],
+  "env": {
+    "MINDSAI_API_KEY": {
+      "description": "Your Minds AI API key",
+      "required": true
+    }
+  }
+}

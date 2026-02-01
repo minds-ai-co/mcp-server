@@ -1,0 +1,27 @@
+{
+  "name": "mindsai-mcp-server",
+  "version": "1.0.0",
+  "description": "Minds AI MCP Server - Create AI personas, digital twins, and expert advisors",
+  "type": "module",
+  "main": "server/mcp/stdio.ts",
+  "scripts": {
+    "start": "npx tsx server/mcp/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "tsx": "^4.19.0",
+    "zod": "^3.25.76"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "ai",
+    "personas",
+    "digital-twin",
+    "model-context-protocol"
+  ],
+  "author": "Minds AI",
+  "license": "MIT"
+}
