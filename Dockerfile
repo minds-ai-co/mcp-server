@@ -5,7 +5,7 @@
 #   docker build -t mindsai-mcp .
 #
 # Run:
-#   docker run -e MINDSAI_API_KEY=aox_xxx mindsai-mcp
+#   docker run -p 3001:3001 mindsai-mcp
 
 FROM node:22-alpine
 
@@ -23,7 +23,10 @@ COPY server/mcp ./server/mcp
 
 # Environment
 ENV NODE_ENV=production
+ENV PORT=3001
 
-# The MCP server uses stdio transport
-# MINDSAI_API_KEY must be provided at runtime
-ENTRYPOINT ["tsx", "server/mcp/stdio.ts"]
+# Expose HTTP port
+EXPOSE 3001
+
+# Use HTTP transport for cloud deployment
+ENTRYPOINT ["tsx", "server/mcp/http.ts"]

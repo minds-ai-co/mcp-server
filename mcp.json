@@ -5,7 +5,7 @@
   "author": "Minds AI",
   "homepage": "https://getminds.ai",
   "repository": "https://github.com/minds-ai-co/mcp-server",
-  "transport": "stdio",
+  "transport": "http",
   "tools": [
     {
       "name": "create_ai_persona_or_digital_twin",
