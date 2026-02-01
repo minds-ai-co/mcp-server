@@ -1,10 +1,10 @@
 {
   "name": "mindsai-personas",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Create AI personas, digital twins, and expert advisors. Train AI on people, topics, or websites. Chat with your custom AI experts.",
   "author": "Minds AI",
   "homepage": "https://getminds.ai",
-  "repository": "https://github.com/mindsai/mcp-server",
+  "repository": "https://github.com/minds-ai-co/mcp-server",
   "transport": "stdio",
   "tools": [
     {
