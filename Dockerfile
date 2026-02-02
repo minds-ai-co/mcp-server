@@ -29,4 +29,4 @@ ENV PORT=3001
 EXPOSE 3001
 
 # Use HTTP transport for cloud deployment
-ENTRYPOINT ["bun", "run", "server/mcp/main.ts"]
+CMD ["tsx", "server/mcp/main.ts"]
