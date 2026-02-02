@@ -122,6 +122,19 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
     return
   }
 
+  // OAuth Protected Resource Metadata (RFC 9728)
+  if (url.pathname === '/.well-known/oauth-protected-resource') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      resource: `${API_URL}/mcp`,
+      authorization_servers: [`${API_URL}`],
+      scopes_supported: ['sparks:read', 'sparks:write', 'sparks:chat'],
+      bearer_methods_supported: ['header'],
+      resource_documentation: 'https://getminds.ai/docs/mcp',
+    }))
+    return
+  }
+
   // MCP endpoint
   if (url.pathname === '/mcp') {
     await handleMcpRequest(req, res)
