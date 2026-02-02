@@ -3,7 +3,7 @@
  * Minds AI MCP Server - HTTP Entry Point
  *
  * For cloud deployment on Dedalus Labs.
- * Uses StreamableHTTPServerTransport with session management.
+ * Stateless HTTP transport - each request creates a new server instance.
  */
 
 import { createServer, IncomingMessage, ServerResponse } from 'node:http'
@@ -14,13 +14,6 @@ import { createArtOfXServer } from './server'
 const API_URL = 'https://getminds.ai'
 const PORT = parseInt(process.env.PORT || '3001', 10)
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'
-
-// Session storage
-interface Session {
-  transport: StreamableHTTPServerTransport
-  apiKey: string
-}
-const sessions = new Map<string, Session>()
 
 /**
  * Set CORS headers
@@ -33,69 +26,33 @@ function setCorsHeaders(res: ServerResponse) {
 }
 
 /**
- * Create a new MCP session
- */
-async function createSession(apiKey: string): Promise<{ sessionId: string; transport: StreamableHTTPServerTransport }> {
-  const sessionId = randomUUID()
-
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => sessionId,
-  })
-
-  // Create and connect server
-  const server = createArtOfXServer(API_URL, apiKey)
-  await server.connect(transport)
-
-  // Store session
-  sessions.set(sessionId, { transport, apiKey })
-
-  // Clean up on close
-  transport.onclose = () => {
-    sessions.delete(sessionId)
-    console.log(`[MCP] Session closed: ${sessionId.slice(0, 8)}...`)
-  }
-
-  console.log(`[MCP] New session: ${sessionId.slice(0, 8)}...`)
-  return { sessionId, transport }
-}
-
-/**
- * Handle MCP requests
+ * Handle MCP requests - stateless, creates new server per request
  */
 async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined
   const authHeader = req.headers['authorization'] as string | undefined
   const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
   try {
-    // Check for existing session
-    if (sessionId) {
-      const session = sessions.get(sessionId)
-      if (session) {
-        await session.transport.handleRequest(req, res)
-        return
-      }
-      // Session not found
-      res.writeHead(404, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ error: 'Session not found' }))
-      return
-    }
+    // Create transport for this request
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+    })
 
-    // Create new session for POST requests
-    if (req.method === 'POST') {
-      const { transport } = await createSession(apiKey)
-      await transport.handleRequest(req, res)
-      return
-    }
+    // Create and connect server
+    const server = createArtOfXServer(API_URL, apiKey)
+    await server.connect(transport)
 
-    // No session and not POST
-    res.writeHead(400, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ error: 'Session required. Send POST to create session.' }))
+    // Handle the request
+    await transport.handleRequest(req, res)
   } catch (error) {
     console.error('[MCP] Error handling request:', error)
     if (!res.headersSent) {
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ error: 'Internal server error' }))
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error' },
+        id: null
+      }))
     }
   }
 }
@@ -118,7 +75,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
   // Health check
   if (url.pathname === '/health' || url.pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok', server: 'mindsai-mcp', sessions: sessions.size }))
+    res.end(JSON.stringify({ status: 'ok', server: 'mindsai-mcp' }))
     return
   }
 
@@ -135,10 +92,24 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
     return
   }
 
-  // MCP endpoint
+  // MCP endpoint - handle both GET and POST
   if (url.pathname === '/mcp') {
-    await handleMcpRequest(req, res)
-    return
+    if (req.method === 'POST') {
+      await handleMcpRequest(req, res)
+      return
+    }
+    // GET returns server info
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        name: 'mindsai-personas',
+        version: '1.0.0',
+        description: 'Create AI personas, digital twins, and expert advisors.',
+        protocol: 'mcp',
+        transport: 'http',
+      }))
+      return
+    }
   }
 
   // 404
