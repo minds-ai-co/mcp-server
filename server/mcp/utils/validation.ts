@@ -89,7 +89,7 @@ export function validateUrl(
   let url: URL
   try {
     url = new URL(value)
-  } catch {
+  } catch (_) {
     return { valid: false, errors: [`${fieldName} is not a valid URL`] }
   }
 
