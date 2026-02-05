@@ -104,7 +104,7 @@ export function verifyUserDiscoveryToken(token: string): string | null {
     }
 
     return userId
-  } catch {
+  } catch (_) {
     return null
   }
 }
