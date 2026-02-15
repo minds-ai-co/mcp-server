@@ -223,7 +223,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           method: 'POST',
           headers: createHeaders,
           body: JSON.stringify({
-            name: profile.name || name,
+            name,
             description: description || `AI Spark created via ChatGPT`,
             systemPrompt: '',
             type: profile.type || type || 'clone',

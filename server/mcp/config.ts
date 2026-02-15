@@ -85,12 +85,12 @@ export function isOriginAllowed(origin: string | undefined): boolean {
 export function getCorsHeaders(origin: string | undefined): Record<string, string> {
   const allowed = isOriginAllowed(origin)
 
-  if (!allowed && isProduction) {
-    // In production, reject unknown origins
+  if (!allowed) {
+    // Reject unknown origins
     return {}
   }
 
-  // In development or for allowed origins, return permissive headers
+  // Return CORS headers for allowed origins
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': CORS_CONFIG.allowedMethods.join(', '),
