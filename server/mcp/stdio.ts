@@ -14,7 +14,7 @@
  *       "command": "npx",
  *       "args": ["tsx", "/path/to/webapp/server/mcp/stdio.ts"],
  *       "env": {
- *         "MINDSAI_API_KEY": "aox_your_api_key_here"
+ *         "MINDSAI_API_KEY": "minds_your_api_key_here"
  *       }
  *     }
  *   }
@@ -35,7 +35,7 @@ async function main() {
     console.error('Get your API key from https://getminds.ai/settings/api-keys')
     console.error('')
     console.error('Usage:')
-    console.error('  MINDSAI_API_KEY=aox_xxx npx tsx server/mcp/stdio.ts')
+    console.error('  MINDSAI_API_KEY=minds_xxx npx tsx server/mcp/stdio.ts')
     process.exit(1)
   }
 

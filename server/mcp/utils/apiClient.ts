@@ -146,12 +146,12 @@ export function createApiClient(config: ApiClientConfig) {
 
 /**
  * Validate an auth token (OAuth token or API key) and get the associated user ID
- * Supports both OAuth tokens and API keys (prefixed with 'aox_')
+ * Supports both OAuth tokens and API keys (prefixed with 'minds_' or legacy 'aox_')
  */
 export async function validateOAuthToken(token: string, apiBaseUrl?: string): Promise<string | null> {
   const baseUrl = apiBaseUrl || API_BASE_URL
   const timeoutMs = TIMEOUT_CONFIG.POLLING_TIMEOUT
-  const isApiKey = token.startsWith('aox_')
+  const isApiKey = token.startsWith('minds_') || token.startsWith('aox_')
 
   try {
     const { controller, timeoutId } = createTimeoutController(timeoutMs)

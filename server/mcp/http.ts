@@ -11,7 +11,7 @@
 
 import { createServer } from 'node:http'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { createArtOfXServer } from './server'
+import { createMindsServer } from './server'
 
 const PORT = parseInt(process.env.PORT || '3001', 10)
 const API_URL = 'https://getminds.ai'
@@ -46,7 +46,7 @@ const httpServer = createServer(async (req, res) => {
       const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
       // Create MCP server with auth
-      const mcpServer = createArtOfXServer(API_URL, apiKey)
+      const mcpServer = createMindsServer(API_URL, apiKey)
 
       // Create transport for this request
       const transport = new StreamableHTTPServerTransport({

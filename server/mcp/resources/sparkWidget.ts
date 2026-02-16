@@ -15,7 +15,7 @@ import { CACHE_TTL, logger } from '../config'
 const WIDGET_META = {
   'openai/widgetPrefersBorder': true,
   'openai/widgetHeight': 600,
-  'openai/widgetDomain': 'artofx.app',
+  'openai/widgetDomain': 'getminds.ai',
   'openai/widgetCsp': "default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; connect-src * data: blob:; img-src * data: blob:; font-src * data:;",
 }
 
