@@ -10,7 +10,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { createArtOfXServer } from './server'
+import { createMindsServer } from './server'
 
 const API_URL = 'https://getminds.ai'
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -58,7 +58,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
         sessionIdGenerator: () => newSessionId,
       })
 
-      const server = createArtOfXServer(API_URL, apiKey)
+      const server = createMindsServer(API_URL, apiKey)
       await server.connect(transport)
 
       sessions.set(newSessionId, { transport, server })

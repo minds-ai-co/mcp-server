@@ -6,7 +6,7 @@
  */
 
 // Main server factory
-export { createArtOfXServer, type ArtOfXServer } from './server'
+export { createMindsServer, type MindsServer } from './server'
 
 // Utilities (for use by API endpoints)
 export { verifyUserDiscoveryToken, generateUserDiscoveryToken } from './utils/tokens'

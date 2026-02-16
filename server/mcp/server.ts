@@ -62,7 +62,7 @@ export const SERVER_CAPABILITIES = {
 /**
  * Create and configure the Minds AI MCP server
  */
-export function createArtOfXServer(publicBaseUrl: string = 'https://getminds.ai', authToken: string = '') {
+export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai', authToken: string = '') {
   const server = new McpServer({
     name: 'mindsai-personas',
     version: '1.0.0',
@@ -212,4 +212,4 @@ export function createArtOfXServer(publicBaseUrl: string = 'https://getminds.ai'
   return server
 }
 
-export type ArtOfXServer = ReturnType<typeof createArtOfXServer>
+export type MindsServer = ReturnType<typeof createMindsServer>
