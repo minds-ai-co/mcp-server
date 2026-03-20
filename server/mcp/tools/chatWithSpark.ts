@@ -68,7 +68,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
 
         if (sparks.length === 0) {
           return {
-            content: [{ type: 'text', text: 'No Sparks found. Please create one first using create_spark.' }],
+            content: [{ type: 'text' as const, text: 'No Sparks found. Please create one first using create_spark.' }],
             isError: true,
           }
         }
@@ -80,7 +80,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
           const availableSparks = (sparks as SparkListItem[]).map((s) => s.name).join(', ')
           return {
             content: [{
-              type: 'text',
+              type: 'text' as const,
               text: `No Spark found matching "${sparkName}". Available Sparks: ${availableSparks}`
             }],
             isError: true,
@@ -104,7 +104,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
 
       if (!resolvedSparkId) {
         return {
-          content: [{ type: 'text', text: 'Please provide either sparkId or sparkName to chat with a Spark.' }],
+          content: [{ type: 'text' as const, text: 'Please provide either sparkId or sparkName to chat with a Spark.' }],
           isError: true,
         }
       }
@@ -142,7 +142,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
       })
 
       return {
-        content: [{ type: 'text', text: '✓ Response displayed in widget' }],
+        content: [{ type: 'text' as const, text: '✓ Response displayed in widget' }],
         structuredContent: {
           mode: 'chat',
           sparkId: resolvedSparkId,
@@ -155,7 +155,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: 'text', text: `Error chatting with Spark: ${errorMessage}` }],
+        content: [{ type: 'text' as const, text: `Error chatting with Spark: ${errorMessage}` }],
         isError: true,
       }
     }
