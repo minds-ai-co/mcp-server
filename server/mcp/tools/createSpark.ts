@@ -84,7 +84,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
         const pollResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl)
         return {
           content: [{
-            type: 'text',
+            type: 'text' as const,
             text: `✓ Spark already being created - "${name}"`,
           }],
           structuredContent: {
@@ -125,7 +125,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       const pollResult = await pollSparkStatus(cached.sparkId, 1, false, effectiveApiUrl)
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `✓ Spark already being created - "${name}"`,
         }],
         structuredContent: {
@@ -163,7 +163,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       pendingCreations.delete(cacheKey)
       rejectCreation!(new Error('Keywords required'))
       return {
-        content: [{ type: 'text', text: 'Keywords are required when using "keywords" mode. Please provide an array of topic keywords.' }],
+        content: [{ type: 'text' as const, text: 'Keywords are required when using "keywords" mode. Please provide an array of topic keywords.' }],
         isError: true,
       }
     }
@@ -171,7 +171,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       pendingCreations.delete(cacheKey)
       rejectCreation!(new Error('personaContext required'))
       return {
-        content: [{ type: 'text', text: 'personaContext is required when using "clone" mode. Please provide the name/description of the person to emulate.' }],
+        content: [{ type: 'text' as const, text: 'personaContext is required when using "clone" mode. Please provide the name/description of the person to emulate.' }],
         isError: true,
       }
     }
@@ -179,7 +179,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       pendingCreations.delete(cacheKey)
       rejectCreation!(new Error('contextLink required'))
       return {
-        content: [{ type: 'text', text: 'contextLink is required when using "link" mode. Please provide a URL to train from.' }],
+        content: [{ type: 'text' as const, text: 'contextLink is required when using "link" mode. Please provide a URL to train from.' }],
         isError: true,
       }
     }
@@ -301,7 +301,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
         return {
           content: [{
-            type: 'text',
+            type: 'text' as const,
             text: isComplete
               ? `✓ Created Spark "${spark.name}" - Ready to chat!`
               : `✓ Creating Spark "${spark.name}" - training in progress (${pollResult.progress || 5}%)`,
@@ -353,7 +353,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `✓ Created Spark "${spark.name}"${isProcessing ? ' (training in progress)' : ''}`,
         }],
         structuredContent: {
@@ -376,7 +376,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       const err = error instanceof Error ? error : new Error(String(error))
       rejectCreation(err)
       return {
-        content: [{ type: 'text', text: `Error creating Spark: ${err.message}` }],
+        content: [{ type: 'text' as const, text: `Error creating Spark: ${err.message}` }],
         isError: true,
       }
     }

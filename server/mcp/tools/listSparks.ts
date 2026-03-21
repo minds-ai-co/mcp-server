@@ -70,7 +70,7 @@ Supports fuzzy search by name to quickly find the right persona.`,
 
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: sparks.length > 0
             ? `Found ${sparks.length} Spark(s):\n${sparkList.map((s) => `- ${s.name} (${s.type}): ${s.description || 'No description'}`).join('\n')}`
             : 'No Sparks found. You can create one using the create_spark tool.',
@@ -80,7 +80,7 @@ Supports fuzzy search by name to quickly find the right persona.`,
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: 'text', text: `Error listing Sparks: ${errorMessage}` }],
+        content: [{ type: 'text' as const, text: `Error listing Sparks: ${errorMessage}` }],
         isError: true,
       }
     }

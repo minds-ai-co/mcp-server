@@ -63,7 +63,7 @@ Returns real-time progress updates including percentage complete and current tra
 
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: isReady
             ? `✓ Spark is ready to chat!`
             : `Spark status: ${statusResult.status} (${statusResult.progress}%) - ${statusResult.message}`,
@@ -87,7 +87,7 @@ Returns real-time progress updates including percentage complete and current tra
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: 'text', text: `Error checking status: ${errorMessage}` }],
+        content: [{ type: 'text' as const, text: `Error checking status: ${errorMessage}` }],
         isError: true,
       }
     }
