@@ -12,7 +12,7 @@ export const askPanelTool = {
   name: 'ask_panel',
   config: {
     title: 'Ask Panel Question',
-    description: `Ask a survey question to all groups in a panel. Questions are auto-classified as scale (1-5, 1-10), categorical (yes/no, multiple choice), or qualitative (open-ended). Each AI persona responds with structured output, and results are aggregated with cross-group comparisons. Qualitative responses are clustered into topics. Supports fuzzy panel name matching.`,
+    description: `Ask a survey question to all groups in a panel. Questions are auto-classified as scale (1-5, 1-10), categorical (yes/no, multiple choice), or qualitative (open-ended). Each AI persona responds with structured output, and results are aggregated with cross-group comparisons. Supports fuzzy panel name matching.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
