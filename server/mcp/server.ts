@@ -14,6 +14,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server'
 
 // Utilities
 import { generateUserDiscoveryToken } from './utils/tokens'
@@ -164,7 +165,8 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
   // ============================================
 
   // Unified Spark Widget (supports both creation and chat modes)
-  server.registerResource(
+  registerAppResource(
+    server,
     sparkWidgetResource.name,
     sparkWidgetResource.uri,
     sparkWidgetResource.metadata,
@@ -191,7 +193,8 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
     async (args) => listSparksTool.handler(args as any, getContext())
   )
 
-  server.registerTool(
+  registerAppTool(
+    server,
     createSparkTool.name,
     createSparkTool.config,
     async (args) => {
@@ -200,13 +203,15 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
     }
   )
 
-  server.registerTool(
+  registerAppTool(
+    server,
     chatWithSparkTool.name,
     chatWithSparkTool.config,
     async (args) => chatWithSparkTool.handler(args as any, getContext())
   )
 
-  server.registerTool(
+  registerAppTool(
+    server,
     getSparkStatusTool.name,
     getSparkStatusTool.config,
     async (args) => getSparkStatusTool.handler(args as any, getContext())

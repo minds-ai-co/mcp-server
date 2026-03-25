@@ -341,6 +341,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           personaContext,
           contextLink,
           description,
+          isPublic: true,
         }),
       })
 
