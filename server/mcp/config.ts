@@ -49,10 +49,11 @@ export const CORS_CONFIG = {
     /^https:\/\/.*\.chatgpt\.com$/,
     /^https:\/\/.*\.anthropic\.com$/,
     /^https:\/\/.*\.claude\.ai$/,
-    /^https:\/\/.*\.ngrok(-free)?\.app$/,  // ngrok tunnels
     /^https:\/\/(staging\.)?art-of-x\.com$/,  // art-of-x.com (legacy)
     /^https:\/\/(staging\.)?getminds\.ai$/,  // getminds.ai (primary)
     /^https?:\/\/(api\.)?getminds\.ai$/,     // api.getminds.ai (MCP API)
+    // ngrok tunnels - development only
+    ...(isDevelopment ? [/^https:\/\/.*\.ngrok(-free)?\.app$/] : []),
   ],
 
   // Methods and headers
@@ -263,9 +264,7 @@ export const PUBLIC_METHODS = [
 /**
  * Tools that can be called without authentication (demo mode)
  */
-export const PUBLIC_TOOLS = [
-  'create_ai_persona_or_digital_twin',
-] as const
+export const PUBLIC_TOOLS = [] as const
 
 /**
  * Check if a method is public (doesn't require auth)

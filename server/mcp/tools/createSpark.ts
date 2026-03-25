@@ -45,6 +45,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       confirmationHint: false,
     },
     _meta: {
+      ui: { resourceUri: 'ui://widget/spark.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:write'],
       'openai/outputTemplate': 'ui://widget/spark.html',
@@ -224,7 +225,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           headers: createHeaders,
           body: JSON.stringify({
             name,
-            description: description || `AI Spark created via ChatGPT`,
+            description: description || `AI Spark created via MCP`,
             systemPrompt: '',
             type: profile.type || type || 'clone',
             discipline: profile.discipline || discipline || null,
@@ -273,7 +274,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
         logger.debug('Starting collection for spark', { sparkId: spark.id.slice(0, 8) + '...' })
 
-        fetch(`${API_BASE_URL}/api/spark/collect-data-demo`, {
+        fetch(`${effectiveApiUrl}/api/spark/collect-data-demo`, {
           method: 'POST',
           headers: collectHeaders,
           body: JSON.stringify({

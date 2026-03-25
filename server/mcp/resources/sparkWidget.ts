@@ -7,16 +7,64 @@
  * - Chat mode: Shows chat interface with an existing spark and optional initial message
  */
 
-import { randomBytes } from 'crypto'
+import { randomBytes, createHash } from 'crypto'
 import { loadSparkWidget } from './widgetLoader'
 import { latestSparkCache, pendingWidgetTokens, cleanupCaches } from '../utils/cache'
 import { CACHE_TTL, logger } from '../config'
 
-const WIDGET_META = {
-  'openai/widgetPrefersBorder': true,
-  'openai/widgetHeight': 600,
-  'openai/widgetDomain': 'getminds.ai',
-  'openai/widgetCsp': "default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; connect-src * data: blob:; img-src * data: blob:; font-src * data:;",
+/**
+ * Build widget metadata with CSP domains based on the server's public URL.
+ * The CSP must include whatever domain the widget will call for API requests.
+ */
+function buildWidgetMeta(publicBaseUrl: string) {
+  // Extract host from publicBaseUrl for CSP directives
+  let cspHost = '*'
+  try {
+    const url = new URL(publicBaseUrl)
+    cspHost = url.host
+  } catch { /* fallback to wildcard */ }
+
+  // Raw CSP string — ChatGPT enforces this on the widget iframe
+  const cspString = [
+    "default-src 'self'",
+    "script-src 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'unsafe-inline'",
+    `connect-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
+    `img-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
+    `font-src ${publicBaseUrl} https://getminds.ai https://fonts.googleapis.com https://fonts.gstatic.com data:`,
+  ].join('; ')
+
+  return {
+    // MCP Apps standard structured CSP (Claude, VS Code, Goose)
+    ui: {
+      csp: {
+        connectDomains: [
+          publicBaseUrl,
+          'https://getminds.ai',
+          'https://*.getminds.ai',
+          'https://*.ondigitalocean.app',
+          'https://*.supabase.co',
+        ],
+        resourceDomains: [
+          publicBaseUrl,
+          'https://getminds.ai',
+          'https://*.getminds.ai',
+          'https://*.ondigitalocean.app',
+          'https://*.supabase.co',
+          'https://fonts.googleapis.com',
+          'https://fonts.gstatic.com',
+        ],
+      },
+      domain: createHash('sha256').update(publicBaseUrl.replace(/\/$/, '') + '/mcp').digest('hex').slice(0, 32) + '.claudemcpcontent.com',
+      prefersBorder: true,
+      height: 600,
+    },
+    // OpenAI Apps SDK raw CSP string (ChatGPT reads this)
+    'openai/widgetPrefersBorder': true,
+    'openai/widgetHeight': 600,
+    'openai/widgetDomain': cspHost,
+    'openai/widgetCsp': cspString,
+  }
 }
 
 export interface SparkWidgetContext {
@@ -131,25 +179,28 @@ window.__API_BASE__ = "${publicBaseUrl}";
 
       html = html.replace('<div id="app"></div>', `${configScript}<div id="app"></div>`)
 
+      const meta = buildWidgetMeta(publicBaseUrl)
+
       return {
         contents: [
           {
             uri: 'ui://widget/spark.html',
-            mimeType: 'text/html+skybridge',
+            mimeType: 'text/html;profile=mcp-app',
             text: html,
-            _meta: WIDGET_META,
+            _meta: meta,
           },
         ],
       }
     } catch (error) {
       logger.error('Error loading spark widget resource', error)
+      const meta = buildWidgetMeta(publicBaseUrl)
       return {
         contents: [
           {
             uri: 'ui://widget/spark.html',
-            mimeType: 'text/html+skybridge',
+            mimeType: 'text/html;profile=mcp-app',
             text: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Minds AI - Spark</title></head><body style="font-family:system-ui;padding:20px;background:#0a0a0b;color:#fff;"><p>Minds AI Spark Widget</p></body></html>`,
-            _meta: WIDGET_META,
+            _meta: meta,
           },
         ],
       }
