@@ -35,6 +35,28 @@ export const getSparkStatusSchema = {
   sparkId: z.string().uuid().describe('ID of the AI persona to check training status for'),
 }
 
+export const createPanelSchema = {
+  name: z.string().min(1).describe('Name for the panel survey'),
+  groupConfigs: z.array(z.object({
+    name: z.string().describe('Group name'),
+    sparkIds: z.array(z.string()).describe('Spark IDs to add to this group'),
+  })).optional().describe('New groups to create (name + spark IDs)'),
+  groupIds: z.array(z.string()).optional().describe('Existing group IDs to attach'),
+}
+
+export const askPanelSchema = {
+  panelId: z.string().optional().describe('Panel ID (UUID)'),
+  panelName: z.string().optional().describe('Panel name (fuzzy matched)'),
+  question: z.string().min(1).describe('Question to ask all groups'),
+  groupIds: z.array(z.string()).optional().describe('Only ask specific groups (defaults to all)'),
+}
+
+export const exportPanelSchema = {
+  panelId: z.string().optional().describe('Panel ID (UUID)'),
+  panelName: z.string().optional().describe('Panel name (fuzzy matched)'),
+  format: z.enum(['md', 'xls']).optional().describe('Export format (default: md)'),
+}
+
 // Type definitions derived from schemas
 export type CreateSparkArgs = {
   name: string

@@ -195,7 +195,13 @@ export async function withCircuitBreaker<T>(
     breaker.recordSuccess()
     return result
   } catch (error) {
-    breaker.recordFailure()
+    // Only count 5xx and network errors as circuit breaker failures.
+    // 4xx errors are client errors and should not trip the breaker.
+    const isClientError = error instanceof Error &&
+      /API error: 4\d{2}/.test(error.message)
+    if (!isClientError) {
+      breaker.recordFailure()
+    }
 
     // If we have a fallback and circuit just opened, use it
     if (options?.fallback && !breaker.isAllowed()) {

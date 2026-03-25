@@ -44,6 +44,7 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
       confirmationHint: false,
     },
     _meta: {
+      ui: { resourceUri: 'ui://widget/spark.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:chat'],
       'openai/outputTemplate': 'ui://widget/spark.html',

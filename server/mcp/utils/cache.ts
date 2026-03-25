@@ -100,14 +100,6 @@ export function associateSparkWithWidgetTokens(sparkId: string, userId?: string)
         sparkId: sparkId.slice(0, 8) + '...',
       })
     }
-    // Also associate with very recent tokens (regardless of user)
-    // This handles the case where resources/read had no auth
-    else if (!data.sparkId && data.timestamp > recentCutoff) {
-      data.sparkId = sparkId
-      logger.debug('Associated recent widget token with spark', {
-        token: token.slice(0, 8) + '...',
-        sparkId: sparkId.slice(0, 8) + '...',
-      })
-    }
+    // Skip tokens without matching userId to prevent cross-user contamination
   }
 }

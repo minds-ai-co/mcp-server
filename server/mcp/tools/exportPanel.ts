@@ -2,6 +2,7 @@
  * Export Panel Tool - generates a structured report from panel survey results
  */
 import type { McpServerContext } from '../types'
+import { exportPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 
@@ -12,14 +13,7 @@ export const exportPanelTool = {
   config: {
     title: 'Export Panel Report',
     description: `Export a comprehensive survey report from a panel's results. Generates structured market research report with cross-group comparisons, key insights, and recommendations. Supports MD format.`,
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        panelId: { type: 'string', description: 'Panel ID (UUID)' },
-        panelName: { type: 'string', description: 'Panel name (fuzzy matched)' },
-        format: { type: 'string', enum: ['md', 'xls'], description: 'Export format (default: md)' },
-      },
-    },
+    inputSchema: exportPanelSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, costHint: 'medium' as const, timeoutHint: 30000, confirmationHint: false },
   },
 

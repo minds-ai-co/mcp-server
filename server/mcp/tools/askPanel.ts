@@ -2,6 +2,7 @@
  * Ask Panel Tool - asks a survey question to all groups in a panel
  */
 import type { McpServerContext } from '../types'
+import { askPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { logger, API_BASE_URL } from '../config'
@@ -12,17 +13,8 @@ export const askPanelTool = {
   name: 'ask_panel',
   config: {
     title: 'Ask Panel Question',
-    description: `Ask a survey question to all groups in a panel. Questions are auto-classified as scale (1-5, 1-10), categorical (yes/no, multiple choice), or qualitative (open-ended). Each AI persona responds with structured output, and results are aggregated with cross-group comparisons. Supports fuzzy panel name matching.`,
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        panelId: { type: 'string', description: 'Panel ID (UUID)' },
-        panelName: { type: 'string', description: 'Panel name (fuzzy matched)' },
-        question: { type: 'string', description: 'Question to ask all groups' },
-        groupIds: { type: 'array', items: { type: 'string' }, description: 'Only ask specific groups (defaults to all)' },
-      },
-      required: ['question'],
-    },
+    description: `Ask a survey question to all groups in a panel. Questions are auto-classified as scale (1-5, 1-10), categorical (yes/no, multiple choice), or qualitative (open-ended). Each AI persona responds with structured output, and results are aggregated with cross-group comparisons. Qualitative responses are clustered into topics. Supports fuzzy panel name matching.`,
+    inputSchema: askPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
   },
 

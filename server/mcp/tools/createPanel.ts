@@ -2,6 +2,7 @@
  * Create Panel Tool - creates a panel survey with groups of AI sparks
  */
 import type { McpServerContext } from '../types'
+import { createPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 
 interface CreatePanelArgs {
@@ -15,18 +16,7 @@ export const createPanelTool = {
   config: {
     title: 'Create Survey Panel',
     description: `Create a structured survey panel with groups of AI personas for market research, focus groups, or structured interviews. You can reference existing groups by ID or create new ones inline.`,
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string', description: 'Name for the panel survey' },
-        groupConfigs: {
-          type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, sparkIds: { type: 'array', items: { type: 'string' } } }, required: ['name', 'sparkIds'] },
-          description: 'New groups to create (name + spark IDs)',
-        },
-        groupIds: { type: 'array', items: { type: 'string' }, description: 'Existing group IDs to attach' },
-      },
-      required: ['name'],
-    },
+    inputSchema: createPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'low' as const, timeoutHint: 15000, confirmationHint: false },
   },
 

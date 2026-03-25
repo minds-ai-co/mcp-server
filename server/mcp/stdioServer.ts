@@ -16,6 +16,9 @@ import { listSparksTool } from './tools/listSparks'
 import { createSparkTool } from './tools/createSpark'
 import { chatWithSparkTool } from './tools/chatWithSpark'
 import { getSparkStatusTool } from './tools/getSparkStatus'
+import { createPanelTool } from './tools/createPanel'
+import { askPanelTool } from './tools/askPanel'
+import { exportPanelTool } from './tools/exportPanel'
 
 // Resources
 import { sparkWidgetResource } from './resources/sparkWidget'
@@ -186,6 +189,25 @@ export function createStdioServer(apiBaseUrl: string, authToken: string) {
     getSparkStatusTool.name,
     getSparkStatusTool.config,
     async (args) => getSparkStatusTool.handler(args as any, getContext())
+  )
+
+  // Panel tools
+  server.registerTool(
+    createPanelTool.name,
+    createPanelTool.config,
+    async (args) => { await ensureTokenReady(); return createPanelTool.handler(args as any, getContext()) }
+  )
+
+  server.registerTool(
+    askPanelTool.name,
+    askPanelTool.config,
+    async (args) => { await ensureTokenReady(); return askPanelTool.handler(args as any, getContext()) }
+  )
+
+  server.registerTool(
+    exportPanelTool.name,
+    exportPanelTool.config,
+    async (args) => { await ensureTokenReady(); return exportPanelTool.handler(args as any, getContext()) }
   )
 
   return server

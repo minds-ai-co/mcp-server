@@ -32,6 +32,7 @@ Returns real-time progress updates including percentage complete and current tra
       confirmationHint: false,
     },
     _meta: {
+      ui: { resourceUri: 'ui://widget/spark.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:read'],
       'openai/outputTemplate': 'ui://widget/spark.html',
@@ -45,7 +46,7 @@ Returns real-time progress updates including percentage complete and current tra
 
     try {
       // Use the demo-state endpoint for richer progress data
-      const statusResult = await pollSparkStatus(sparkId, 1)
+      const statusResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl)
 
       const isReady = statusResult.status === 'completed' || statusResult.status === 'idle'
 
