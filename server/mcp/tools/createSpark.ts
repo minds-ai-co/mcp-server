@@ -274,7 +274,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
         logger.debug('Starting collection for spark', { sparkId: spark.id.slice(0, 8) + '...' })
 
-        fetch(`${effectiveApiUrl}/api/spark/collect-data-demo`, {
+        void fetch(`${effectiveApiUrl}/api/spark/collect-data-demo`, {
           method: 'POST',
           headers: collectHeaders,
           body: JSON.stringify({
