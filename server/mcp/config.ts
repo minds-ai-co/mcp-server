@@ -277,5 +277,5 @@ export function isPublicMethod(method: string): boolean {
  * Check if a tool is public (can be called without auth)
  */
 export function isPublicTool(toolName: string): boolean {
-  return (PUBLIC_TOOLS as readonly string[]).includes(toolName)
+  return PUBLIC_TOOLS.includes(toolName as any)
 }

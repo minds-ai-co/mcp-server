@@ -71,7 +71,6 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
     name: 'mindsai-personas',
     version: '1.0.0',
     description: 'Create AI personas, digital twins, and expert advisors. Train AI on people, topics, or websites. Chat with your custom AI experts.',
-    // @ts-expect-error _meta is used for MCP authorization metadata
     _meta: {
       'mcp/authorization': {
         type: 'oauth2',

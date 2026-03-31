@@ -11,13 +11,12 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Enable pnpm via corepack and install tsx globally
-RUN corepack enable && corepack prepare pnpm@latest --activate && \
-    pnpm install -g tsx
+# Install tsx globally for running TypeScript
+RUN npm install -g tsx
 
 # Copy package.json and install deps
 COPY package.json ./
-RUN pnpm install --prod
+RUN npm install --production
 
 # Copy MCP server source files
 COPY server/mcp ./server/mcp
