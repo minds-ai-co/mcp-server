@@ -269,7 +269,10 @@ export const TOOL_SCOPES: Record<string, string[]> = {
 export const PUBLIC_METHODS = [
   'initialize',
   'notifications/initialized',
+  'notifications/cancelled',
   'ping',
+  'tools/list',
+  'resources/list',
 ] as const
 
 /**
