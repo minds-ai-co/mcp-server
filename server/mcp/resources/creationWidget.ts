@@ -21,8 +21,12 @@ export const creationWidgetResource = {
     })
 
     return {
-      contents: [{ uri: 'ui://widget/creation.html', mimeType: 'text/html;profile=mcp-app', text: html }],
-      _meta: buildWidgetMeta(context.publicBaseUrl, 500),
+      contents: [{
+        uri: 'ui://widget/creation.html',
+        mimeType: 'text/html;profile=mcp-app',
+        text: html,
+        _meta: buildWidgetMeta(context.publicBaseUrl, 500),
+      }],
     }
   },
 }

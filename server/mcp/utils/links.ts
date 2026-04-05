@@ -11,10 +11,10 @@ export function mindLink(baseUrl: string, sparkId: string): string {
 
 /** Link to a chat/panel flow in the workspace */
 export function chatLink(baseUrl: string, flowId: string): string {
-  return `${baseUrl}/workspace?flowId=${flowId}`
+  return `${baseUrl}/?flowId=${flowId}`
 }
 
 /** Link to the workspace (no specific flow) */
 export function workspaceLink(baseUrl: string): string {
-  return `${baseUrl}/workspace`
+  return `${baseUrl}/`
 }

@@ -25,8 +25,12 @@ export const infoWidgetResource = {
     })
 
     return {
-      contents: [{ uri: 'ui://widget/info.html', mimeType: 'text/html;profile=mcp-app', text: html }],
-      _meta: buildWidgetMeta(context.publicBaseUrl, 400),
+      contents: [{
+        uri: 'ui://widget/info.html',
+        mimeType: 'text/html;profile=mcp-app',
+        text: html,
+        _meta: buildWidgetMeta(context.publicBaseUrl, 400),
+      }],
     }
   },
 }
