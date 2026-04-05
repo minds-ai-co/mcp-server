@@ -6,7 +6,7 @@
  */
 
 // Main server factory
-export { createMindsServer, type MindsServer } from './server'
+export { createMindsServer, serverLastToolError, type MindsServer } from './server'
 
 // Utilities (for use by API endpoints)
 export { verifyUserDiscoveryToken, generateUserDiscoveryToken } from './utils/tokens'

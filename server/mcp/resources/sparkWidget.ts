@@ -169,12 +169,23 @@ window.__API_BASE__ = "${publicBaseUrl}";
           configScript = `<script>window.__USER_DISCOVERY_TOKEN__ = "${userDiscoveryToken}"; window.__WIDGET_GENERATED_AT__ = ${widgetGeneratedAt}; window.__API_BASE__ = "${publicBaseUrl}";</script>`
         }
       }
-      // Fallback: Widget token for correlation (when no auth)
+      // Fallback: No discovery token — still embed latestSparkId if recent
       else {
+        const isRecentSpark = sparkIdToEmbed && (Date.now() - sparkTimestamp < CACHE_TTL.RECENT_SPARK_ASSOCIATION)
         const widgetToken = randomBytes(16).toString('hex')
         pendingWidgetTokens.set(widgetToken, { timestamp: widgetGeneratedAt, userId: authenticatedUserId || undefined })
         cleanupCaches()
-        configScript = `<script>window.__WIDGET_TOKEN__ = "${widgetToken}"; window.__WIDGET_GENERATED_AT__ = ${widgetGeneratedAt}; window.__API_BASE__ = "${publicBaseUrl}";</script>`
+        if (isRecentSpark) {
+          logger.debug('Embedding recent spark ID in widget (no discovery token)', { sparkId: sparkIdToEmbed?.slice(0, 8) + '...' })
+          configScript = `<script>
+window.__SPARK_ID__ = "${sparkIdToEmbed}";
+window.__WIDGET_TOKEN__ = "${widgetToken}";
+window.__WIDGET_GENERATED_AT__ = ${widgetGeneratedAt};
+window.__API_BASE__ = "${publicBaseUrl}";
+</script>`
+        } else {
+          configScript = `<script>window.__WIDGET_TOKEN__ = "${widgetToken}"; window.__WIDGET_GENERATED_AT__ = ${widgetGeneratedAt}; window.__API_BASE__ = "${publicBaseUrl}";</script>`
+        }
       }
 
       html = html.replace('<div id="app"></div>', `${configScript}<div id="app"></div>`)

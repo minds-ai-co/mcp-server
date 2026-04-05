@@ -7,6 +7,26 @@ import { API_BASE_URL, logger, POLLING_CONFIG, TIMEOUT_CONFIG, CIRCUIT_BREAKER_C
 import { withCircuitBreaker, CircuitBreakerOpenError } from './circuitBreaker'
 import { timeout as timeoutError, serviceUnavailable } from './errors'
 
+/**
+ * Error thrown by apiCall/publicApiCall that preserves HTTP status and structured response data.
+ * Nuxt's createError uses `statusMessage` (not `message`) and puts structured info in `data`.
+ */
+export class ApiError extends Error {
+  readonly status: number
+  readonly data?: Record<string, unknown>
+
+  constructor(
+    message: string,
+    status: number,
+    data?: Record<string, unknown>,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
 export interface ApiClientConfig {
   authToken?: string
   /** Default timeout for requests in ms */
@@ -65,8 +85,17 @@ export function createApiClient(config: ApiClientConfig) {
           clearTimeout(timeoutId)
 
           if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: response.statusText }))
-            throw new Error(error.message || `API error: ${response.status}`)
+            const body = await response.json().catch(() => ({}))
+            const message = body.statusMessage || body.message || `API error: ${response.status}`
+            if (response.status === 401 || response.status === 403) {
+              logger.warn('[apiClient] Auth rejected by internal API', {
+                endpoint,
+                status: response.status,
+                tokenPrefix: authToken ? authToken.slice(0, 8) + '...' : 'none',
+                errorMessage: message,
+              })
+            }
+            throw new ApiError(message, response.status, body.data)
           }
 
           return response.json()
@@ -117,8 +146,9 @@ export function createApiClient(config: ApiClientConfig) {
           clearTimeout(timeoutId)
 
           if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: response.statusText }))
-            throw new Error(error.message || `API error: ${response.status}`)
+            const body = await response.json().catch(() => ({}))
+            const message = body.statusMessage || body.message || `API error: ${response.status}`
+            throw new ApiError(message, response.status, body.data)
           }
 
           return response.json()
@@ -220,63 +250,86 @@ export async function pollSparkStatus(
   sparkId: string,
   maxAttempts: number = POLLING_CONFIG.DEFAULT_MAX_ATTEMPTS,
   waitForCompletion: boolean = false,
-  apiBaseUrl?: string
+  apiBaseUrl?: string,
+  authToken?: string,
+  requestTimeout?: number
 ): Promise<SparkStatusResult> {
   const baseUrl = apiBaseUrl || API_BASE_URL
+  const timeoutMs = requestTimeout || TIMEOUT_CONFIG.POLLING_TIMEOUT
   let lastKnowledge: unknown[] = []
   let lastSpark: SparkData | null = null
   let lastSystemPrompt: string = ''
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const { controller, timeoutId } = createTimeoutController(TIMEOUT_CONFIG.POLLING_TIMEOUT)
+      const { controller, timeoutId } = createTimeoutController(timeoutMs)
 
       const response = await fetch(
         `${baseUrl}/api/public/spark/${sparkId}/demo-state?_t=${Date.now()}`,
-        { signal: controller.signal }
+        {
+          signal: controller.signal,
+          headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : undefined,
+        }
       )
 
       clearTimeout(timeoutId)
 
-      if (response.ok) {
-        const data = await response.json()
-        const status = data.collectionStatus?.status || 'running'
-        const progress = data.collectionStatus?.progress || 0
-        const message = data.collectionStatus?.message || 'Processing...'
-        const knowledge = data.portfolioItems || []
-        const spark = data.spark || null
-        const systemPrompt = spark?.systemPrompt || ''
-
-        // Keep track of latest data
-        if (knowledge.length > lastKnowledge.length) {
-          lastKnowledge = knowledge
-        }
-        if (spark) lastSpark = spark
-        if (systemPrompt) lastSystemPrompt = systemPrompt
-
-        logger.debug('Spark status poll', {
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        const errorMsg = body.statusMessage || body.message || `HTTP ${response.status}`
+        logger.warn('Spark status poll failed', {
           sparkId: sparkId.slice(0, 8) + '...',
-          status,
-          progress,
-          knowledgeItems: knowledge.length,
+          status: response.status,
+          error: errorMsg,
         })
-
-        // If completed or failed, return immediately
-        if (status === 'completed' || status === 'failed' || status === 'idle') {
-          return {
-            status,
-            progress: status === 'completed' ? 100 : progress,
-            message,
-            knowledge: lastKnowledge,
-            spark: lastSpark,
-            systemPrompt: lastSystemPrompt
-          }
+        // Return immediately for non-retryable errors
+        if (response.status === 403 || response.status === 401) {
+          return { status: 'error', progress: 0, message: `Access denied: ${errorMsg}` }
         }
-
-        // If not waiting for completion, return current progress
-        if (!waitForCompletion) {
-          return { status, progress, message, knowledge, spark, systemPrompt }
+        if (response.status === 404) {
+          return { status: 'error', progress: 0, message: `Spark not found` }
         }
+        // Other errors: continue polling if attempts remain
+        continue
+      }
+
+      const data = await response.json()
+      const status = data.collectionStatus?.status || 'running'
+      const progress = data.collectionStatus?.progress || 0
+      const message = data.collectionStatus?.message || 'Processing...'
+      const knowledge = data.portfolioItems || []
+      const spark = data.spark || null
+      const systemPrompt = spark?.systemPrompt || ''
+
+      // Keep track of latest data
+      if (knowledge.length > lastKnowledge.length) {
+        lastKnowledge = knowledge
+      }
+      if (spark) lastSpark = spark
+      if (systemPrompt) lastSystemPrompt = systemPrompt
+
+      logger.debug('Spark status poll', {
+        sparkId: sparkId.slice(0, 8) + '...',
+        status,
+        progress,
+        knowledgeItems: knowledge.length,
+      })
+
+      // If completed or failed, return immediately
+      if (status === 'completed' || status === 'failed' || status === 'idle') {
+        return {
+          status,
+          progress: status === 'completed' ? 100 : progress,
+          message,
+          knowledge: lastKnowledge,
+          spark: lastSpark,
+          systemPrompt: lastSystemPrompt
+        }
+      }
+
+      // If not waiting for completion, return current progress
+      if (!waitForCompletion) {
+        return { status, progress, message, knowledge, spark, systemPrompt }
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -296,8 +349,8 @@ export async function pollSparkStatus(
   // Timeout - return last known state
   return {
     status: 'timeout',
-    progress: 0,
-    message: 'Collection is still in progress. Use check_ai_persona_training_progress to monitor.',
+    progress: lastSpark ? -1 : 0,
+    message: 'Status check timed out. Use get_mind_status to retry.',
     knowledge: lastKnowledge,
     spark: lastSpark,
     systemPrompt: lastSystemPrompt

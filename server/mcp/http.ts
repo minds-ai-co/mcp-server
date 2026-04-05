@@ -14,7 +14,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createMindsServer } from './server'
 
 const PORT = parseInt(process.env.PORT || '3001', 10)
-const API_URL = 'https://getminds.ai'
+const API_URL = process.env.MINDSAI_API_URL || 'https://getminds.ai'
 
 // Create HTTP server
 const httpServer = createServer(async (req, res) => {
@@ -46,7 +46,7 @@ const httpServer = createServer(async (req, res) => {
       const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
       // Create MCP server with auth
-      const mcpServer = createMindsServer(API_URL, apiKey)
+      const mcpServer = createMindsServer({ publicBaseUrl: API_URL, authToken: apiKey })
 
       // Create transport for this request
       const transport = new StreamableHTTPServerTransport({

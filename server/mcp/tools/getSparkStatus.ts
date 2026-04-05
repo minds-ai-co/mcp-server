@@ -5,19 +5,16 @@
 
 import { getSparkStatusSchema, type GetSparkStatusArgs, type McpServerContext } from '../types'
 import { pollSparkStatus } from '../utils/apiClient'
-import { API_BASE_URL, logger } from '../config'
+import { API_BASE_URL, TIMEOUT_CONFIG } from '../config'
+import { mindLink } from '../utils/links'
 
 export const getSparkStatusTool = {
-  name: 'check_ai_persona_training_progress',
+  name: 'get_mind_status',
   config: {
-    title: 'Check AI Persona Training Progress',
-    description: `Check the training status and progress of an AI persona being created. Use this when:
-- The user wants to know if their AI persona is ready
-- Checking the progress of a digital twin being trained
-- Waiting for an AI expert to finish learning its knowledge base
-- The user asks "is my AI ready?" or "how is my persona doing?"
+    title: 'Get Mind Status',
+    description: `Check if a Mind has finished training after creation. Returns progress percentage and current stage.
 
-Returns real-time progress updates including percentage complete and current training stage.`,
+Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.`,
     inputSchema: getSparkStatusSchema,
     annotations: {
       readOnlyHint: true,
@@ -32,11 +29,8 @@ Returns real-time progress updates including percentage complete and current tra
       confirmationHint: false,
     },
     _meta: {
-      ui: { resourceUri: 'ui://widget/spark.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:read'],
-      'openai/outputTemplate': 'ui://widget/spark.html',
-      'openai/widgetAccessible': true,
     },
   },
 
@@ -46,28 +40,25 @@ Returns real-time progress updates including percentage complete and current tra
 
     try {
       // Use the demo-state endpoint for richer progress data
-      const statusResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl)
+      const statusResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl, context.apiKey, TIMEOUT_CONFIG.DEFAULT_API_TIMEOUT)
+
+      // Surface API errors (403, 404) as tool errors instead of fake progress
+      if (statusResult.status === 'error') {
+        return {
+          content: [{ type: 'text' as const, text: statusResult.message }],
+          isError: true,
+        }
+      }
 
       const isReady = statusResult.status === 'completed' || statusResult.status === 'idle'
-
-      // Also fetch spark details for the widget
-      let spark = null
-      try {
-        const sparkResponse = await fetch(`${effectiveApiUrl}/api/public/spark/${sparkId}/demo-state?_t=${Date.now()}`)
-        if (sparkResponse.ok) {
-          const data = await sparkResponse.json()
-          spark = data.spark
-        }
-      } catch (e) {
-        logger.warn('Failed to fetch spark details', { sparkId: sparkId.slice(0, 8) + '...', error: e instanceof Error ? e.message : String(e) })
-      }
+      const spark = statusResult.spark
 
       return {
         content: [{
           type: 'text' as const,
           text: isReady
-            ? `✓ Spark is ready to chat!`
-            : `Spark status: ${statusResult.status} (${statusResult.progress}%) - ${statusResult.message}`,
+            ? `✓ Mind is ready to chat!\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`
+            : `Mind status: ${statusResult.status} (${statusResult.progress}%) — ${statusResult.message}\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`,
         }],
         structuredContent: {
           spark: spark ? {

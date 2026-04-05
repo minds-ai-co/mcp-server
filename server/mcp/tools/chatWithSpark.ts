@@ -6,6 +6,7 @@
 import { chatWithSparkSchema, type ChatWithSparkArgs, type McpServerContext, type SparkData } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
+import { mindLink } from '../utils/links'
 import { logger } from '../config'
 
 /** Spark list item from API */
@@ -18,18 +19,13 @@ interface SparkListItem {
 }
 
 export const chatWithSparkTool = {
-  name: 'talk_to_ai_persona',
+  name: 'chat_with_mind',
   config: {
-    title: 'Talk to AI Persona or Digital Twin',
-    description: `Have a conversation with an AI persona, digital twin, or expert advisor. Use this when the user wants to:
-- Chat with a specific AI expert or advisor they created
-- Get advice from their digital twin or AI persona
-- Ask questions to an AI trained on specific knowledge
-- Have a conversation with an AI version of a person
-- Consult their AI marketing expert, legal advisor, coach, etc.
-- Talk to an AI that thinks like a famous person or thought leader
+    title: 'Chat with a Mind',
+    description: `Send a message to one of the user's Minds and get a response. Use this for 1:1 conversations with a single Mind — for surveying multiple Minds at once, use ask_panel instead.
 
-Supports finding personas by name with fuzzy matching (e.g., "my marketing expert" or "the Einstein persona").`,
+Supports multi-turn conversations and fuzzy name matching (e.g., "my marketing expert").
+Provide sparkId (UUID) or sparkName — use list_minds to find available Minds.`,
     inputSchema: chatWithSparkSchema,
     annotations: {
       readOnlyHint: true,
@@ -44,11 +40,11 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
       confirmationHint: false,
     },
     _meta: {
-      ui: { resourceUri: 'ui://widget/spark.html' },
+      ui: { resourceUri: 'ui://widget/response.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:chat'],
-      'openai/outputTemplate': 'ui://widget/spark.html',
-      'openai/toolInvocation/invoking': 'Consulting your AI persona...',
+      'openai/outputTemplate': 'ui://widget/response.html',
+      'openai/toolInvocation/invoking': 'Querying your Mind...',
       'openai/toolInvocation/invoked': 'Response ready',
     },
   },
@@ -143,14 +139,23 @@ Supports finding personas by name with fuzzy matching (e.g., "my marketing exper
       })
 
       return {
-        content: [{ type: 'text' as const, text: '✓ Response displayed in widget' }],
+        content: [{ type: 'text' as const, text: `${result.content || 'No response generated.'}\n\n—\n*${resolvedSparkData?.name || 'Mind'}* · ${mindLink(context.publicBaseUrl, resolvedSparkId!)}` }],
         structuredContent: {
           mode: 'chat',
+          spark: resolvedSparkData ? {
+            id: resolvedSparkData.id,
+            name: resolvedSparkData.name,
+            type: resolvedSparkData.type,
+            discipline: resolvedSparkData.discipline,
+            profileImageUrl: resolvedSparkData.profileImageUrl,
+          } : { id: resolvedSparkId },
           sparkId: resolvedSparkId,
-          sparkData: resolvedSparkData,
           initialMessage: message,
           initialResponse: result.content,
           metadata: result.metadata,
+          isProcessing: false,
+          status: 'completed',
+          progress: 100,
         },
       }
     } catch (error) {
