@@ -4,9 +4,9 @@
  * so users can open results in the Minds AI webapp.
  */
 
-/** Link to a Mind's detail page */
+/** Link to a Mind's detail page (opens slide-in panel in workspace) */
 export function mindLink(baseUrl: string, sparkId: string): string {
-  return `${baseUrl}/spark/${sparkId}`
+  return `${baseUrl}/?sparkId=${sparkId}&openPanel=true`
 }
 
 /** Link to a chat/panel flow in the workspace */
