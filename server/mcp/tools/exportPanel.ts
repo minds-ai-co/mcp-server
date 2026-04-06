@@ -5,6 +5,7 @@ import type { McpServerContext } from '../types'
 import { exportPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
+import { chatLink } from '../utils/links'
 
 interface ExportPanelArgs { panelId?: string; panelName?: string; format?: 'md' | 'pdf' | 'json' }
 
@@ -56,7 +57,7 @@ Requires a panel with at least one answered question (use ask_panel first).`,
         const jobId = result.data?.jobId || result.jobId
         if (jobId) {
           return {
-            content: [{ type: 'text' as const, text: `PDF export started (job: ${jobId}). Use get_panel_status to check when the download is ready.` }],
+            content: [{ type: 'text' as const, text: `PDF export started (job: ${jobId}). Use get_panel_status to check when the download is ready.\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
             structuredContent: { panelId: resolvedPanelId, format: 'pdf', jobId, status: 'queued' },
           }
         }
@@ -74,7 +75,7 @@ Requires a panel with at least one answered question (use ask_panel first).`,
       // MD: synchronous markdown report (LLM-generated, can be slow)
       const result = await apiCall(`/api/v1/panels/${resolvedPanelId}/export`, { method: 'POST', body: JSON.stringify({ format: 'md' }), timeout: 180000 })
       const report = result.data?.content || result.content || 'No report generated'
-      return { content: [{ type: 'text' as const, text: report }], structuredContent: { panelId: resolvedPanelId, format: 'md', report } }
+      return { content: [{ type: 'text' as const, text: `${report}\n\n---\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }], structuredContent: { panelId: resolvedPanelId, format: 'md', report } }
     } catch (error) {
       return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true }
     }

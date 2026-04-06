@@ -6,6 +6,7 @@
 import { getPanelAnalyticsSchema, type GetPanelAnalyticsArgs, type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
+import { chatLink } from '../utils/links'
 import { computePanelStatistics, type PanelStatistics } from '~/server/utils/panel-statistics'
 
 export const getPanelAnalyticsTool = {
@@ -135,7 +136,7 @@ Use after running several questions with ask_panel to get a summary of findings.
       }
 
       return {
-        content: [{ type: 'text' as const, text: lines.join('\n') }],
+        content: [{ type: 'text' as const, text: lines.join('\n') + `\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
         structuredContent: { panelId: resolvedPanelId, statistics: stats },
       }
     } catch (error) {
