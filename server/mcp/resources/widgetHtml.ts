@@ -34,20 +34,27 @@ async function loadWidgetAsync(name: 'creation' | 'info' | 'response'): Promise<
     logger.debug(`Server assets not available for ${name}: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  // 2. Fallback: read from filesystem (local dev)
-  const devPath = resolve(process.cwd(), `widgets/dist/${name}.html`)
-  if (existsSync(devPath)) {
-    try {
-      const html = readFileSync(devPath, 'utf-8')
-      logger.info(`Loaded widget HTML from dev path: ${name}`)
-      cache.set(name, html)
-      return html
-    } catch (err) {
-      logger.error(`Failed to read widget HTML: ${name}`, { error: err instanceof Error ? err.message : String(err) })
+  // 2. Fallback: read from filesystem
+  const cwd = process.cwd()
+  const candidates = [
+    resolve(cwd, `widgets/dist/${name}.html`),           // dev: local vite build
+    resolve(cwd, `public/_widgets/${name}.html`),         // dev: after build:widgets
+    resolve(cwd, `.output/public/_widgets/${name}.html`), // Docker: /app/.output/public/_widgets/
+  ]
+  for (const filePath of candidates) {
+    if (existsSync(filePath)) {
+      try {
+        const html = readFileSync(filePath, 'utf-8')
+        logger.info(`Loaded widget HTML: ${name} from ${filePath}`)
+        cache.set(name, html)
+        return html
+      } catch (err) {
+        logger.error(`Failed to read widget HTML: ${name} at ${filePath}`, { error: err instanceof Error ? err.message : String(err) })
+      }
     }
   }
 
-  logger.error(`Widget HTML not found: ${name}`, { cwd: process.cwd() })
+  logger.error(`Widget HTML not found: ${name}`, { cwd, tried: candidates })
   return ERROR_HTML(name)
 }
 
