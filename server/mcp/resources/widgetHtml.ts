@@ -1,75 +1,84 @@
 /**
  * Load pre-built widget HTML and inject __WIDGET_CONFIG__.
  *
- * Searches multiple paths:
- * - widgets/dist/ (dev: local vite build output)
- * - public/_widgets/ (build step copies here before nuxt build)
- * - .output/public/_widgets/ (production: inside Nitro output)
+ * Uses Nitro server assets (bundled at build time) so the HTML is
+ * available regardless of CWD or filesystem layout in production.
+ * Falls back to reading from widgets/dist/ for local dev.
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { readFileSync, existsSync } from 'fs'
+import { resolve } from 'path'
+import { useStorage } from '#imports'
 import { logger } from '../config'
 
-// Cache loaded HTML in memory (read once at startup)
+// Cache loaded HTML in memory (read once per widget)
 const cache = new Map<string, string>()
 
-// Resolve the directory of THIS file at import time (works in both dev and Nitro build)
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const ERROR_HTML = (name: string) =>
+  `<!DOCTYPE html><html><body><p style="color:#ef4444;padding:2rem">Widget "${name}" not built. Run: pnpm build:widgets</p></body></html>`
 
-function findWidgetFile(name: string): string | null {
-  const cwd = process.cwd()
-  const candidates = [
-    // Dev: local vite build output
-    resolve(cwd, `widgets/dist/${name}.html`),
-    // Build step copies here before nuxt build
-    resolve(cwd, `public/_widgets/${name}.html`),
-    // Production: inside Nitro output (relative to CWD)
-    resolve(cwd, `.output/public/_widgets/${name}.html`),
-    // Nitro server CWD is .output/server/ — go up one level
-    resolve(cwd, `../public/_widgets/${name}.html`),
-    // Resolve relative to THIS file's location in the Nitro bundle
-    // In prod: .output/server/chunks/ → ../../public/_widgets/
-    resolve(__dirname, `../../public/_widgets/${name}.html`),
-    resolve(__dirname, `../../../public/_widgets/${name}.html`),
-    resolve(__dirname, `../../../../public/_widgets/${name}.html`),
-  ]
-  for (const path of candidates) {
-    if (existsSync(path)) return path
-  }
-  // Log all attempted paths for debugging
-  logger.error(`Widget file not found: ${name}`, {
-    cwd,
-    serverDir: __dirname,
-    tried: candidates,
-  })
-  return null
-}
-
-function loadWidget(name: 'creation' | 'info' | 'response'): string {
+async function loadWidgetAsync(name: 'creation' | 'info' | 'response'): Promise<string> {
   if (cache.has(name)) return cache.get(name)!
 
-  const path = findWidgetFile(name)
-  if (!path) {
-    logger.error(`Widget HTML not found: ${name}`)
-    return `<!DOCTYPE html><html><body><p style="color:#ef4444;padding:2rem">Widget "${name}" not built. Run: pnpm build:widgets</p></body></html>`
+  // 1. Try Nitro server assets (production — bundled at build time)
+  try {
+    const storage = useStorage('assets:server')
+    const html = await storage.getItem(`widgets/${name}.html`)
+    if (html && typeof html === 'string' && html.length > 200) {
+      logger.info(`Loaded widget HTML from server assets: ${name}`)
+      cache.set(name, html)
+      return html
+    }
+  } catch (err) {
+    // useStorage may not be available in dev or test contexts
+    logger.debug(`Server assets not available for ${name}: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  try {
-    const html = readFileSync(path, 'utf-8')
-    logger.info(`Loaded widget HTML: ${name} from ${path}`)
-    cache.set(name, html)
-    return html
-  } catch (err) {
-    logger.error(`Failed to read widget HTML: ${name} at ${path}`, { error: err instanceof Error ? err.message : String(err) })
-    return `<!DOCTYPE html><html><body><p style="color:#ef4444;padding:2rem">Widget "${name}" not built. Run: pnpm build:widgets</p></body></html>`
+  // 2. Fallback: read from filesystem (local dev)
+  const devPath = resolve(process.cwd(), `widgets/dist/${name}.html`)
+  if (existsSync(devPath)) {
+    try {
+      const html = readFileSync(devPath, 'utf-8')
+      logger.info(`Loaded widget HTML from dev path: ${name}`)
+      cache.set(name, html)
+      return html
+    } catch (err) {
+      logger.error(`Failed to read widget HTML: ${name}`, { error: err instanceof Error ? err.message : String(err) })
+    }
   }
+
+  logger.error(`Widget HTML not found: ${name}`, { cwd: process.cwd() })
+  return ERROR_HTML(name)
+}
+
+// Synchronous wrapper with async preload for cached reads
+function loadWidget(name: 'creation' | 'info' | 'response'): string {
+  if (cache.has(name)) return cache.get(name)!
+  // Return error HTML synchronously, but trigger async load for next call
+  loadWidgetAsync(name).catch(() => {})
+  return ERROR_HTML(name)
+}
+
+/**
+ * Preload all widgets into cache. Call once at startup.
+ */
+export async function preloadWidgets(): Promise<void> {
+  const widgets = ['creation', 'info', 'response'] as const
+  await Promise.allSettled(widgets.map(w => loadWidgetAsync(w)))
+  logger.info(`Widget preload complete: ${widgets.map(w => `${w}=${cache.has(w) ? 'ok' : 'missing'}`).join(', ')}`)
 }
 
 export function getWidgetHtml(name: 'creation' | 'info' | 'response', config: Record<string, any>): string {
   const html = loadWidget(name)
+  const configScript = `<script>window.__WIDGET_CONFIG__ = ${JSON.stringify(config)};</script>`
+  return html.replace('<!-- __WIDGET_CONFIG__ -->', configScript)
+}
+
+/**
+ * Async version for resource handlers that can await
+ */
+export async function getWidgetHtmlAsync(name: 'creation' | 'info' | 'response', config: Record<string, any>): Promise<string> {
+  const html = await loadWidgetAsync(name)
   const configScript = `<script>window.__WIDGET_CONFIG__ = ${JSON.stringify(config)};</script>`
   return html.replace('<!-- __WIDGET_CONFIG__ -->', configScript)
 }

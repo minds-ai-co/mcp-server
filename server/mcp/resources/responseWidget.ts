@@ -2,7 +2,7 @@
  * Response Widget Resource — shows panel survey results
  */
 import { buildWidgetMeta } from './widgetMeta'
-import { getWidgetHtml } from './widgetHtml'
+import { getWidgetHtmlAsync } from './widgetHtml'
 import type { McpServerContext } from '../types'
 
 export const responseWidgetResource = {
@@ -14,7 +14,7 @@ export const responseWidgetResource = {
   },
 
   handler: async (context: McpServerContext & { panelId?: string; questionId?: string; outputData?: any }) => {
-    const html = getWidgetHtml('response', {
+    const html = await getWidgetHtmlAsync('response', {
       type: 'response',
       apiBase: context.publicBaseUrl || 'https://getminds.ai',
       authToken: context.apiKey,
