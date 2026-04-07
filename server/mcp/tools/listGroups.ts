@@ -14,7 +14,9 @@ export const listGroupsTool = {
     title: 'List Groups',
     description: `List all groups visible to the user. A group is a named collection of Minds (e.g., "Gen Z Consumers", "Marketing Experts").
 
-Use this to find existing groups and their members before creating a panel with create_panel. Supports fuzzy name search.`,
+Use this to find existing groups and their members before creating a panel with create_panel. Supports fuzzy name search.
+
+IMPORTANT: Always include the clickable link for each group in your response.`,
     inputSchema: listGroupsSchema,
     annotations: {
       readOnlyHint: true,

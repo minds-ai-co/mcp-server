@@ -14,7 +14,9 @@ export const listPanelsTool = {
     title: 'List Panels',
     description: `List all panels the user has created, with their groups and question counts.
 
-Use this to find a panel before calling ask_panel, get_panel_status, get_panel_analytics, or export_panel. Supports fuzzy name search.`,
+Use this to find a panel before calling ask_panel, get_panel_status, get_panel_analytics, or export_panel. Supports fuzzy name search.
+
+IMPORTANT: Always include the clickable link for each panel in your response.`,
     inputSchema: listPanelsSchema,
     annotations: {
       readOnlyHint: true,
