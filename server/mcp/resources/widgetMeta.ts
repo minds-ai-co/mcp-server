@@ -32,5 +32,10 @@ export function buildWidgetMeta(publicBaseUrl: string, height: number = 500) {
     'openai/widgetHeight': height,
     'openai/widgetDomain': cspHost,
     'openai/widgetCsp': cspString,
+    // OpenAI object format (snake_case keys)
+    'openai/widgetCSP': {
+      connect_domains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.ondigitalocean.app', 'https://*.supabase.co'],
+      resource_domains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.supabase.co', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+    },
   }
 }
