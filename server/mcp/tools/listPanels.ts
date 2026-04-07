@@ -65,7 +65,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         content: [{
           type: 'text' as const,
           text: panelList.length > 0
-            ? `Found ${panelList.length} panel(s):\n${panelList.map(p => `- **${p.name}** — ${p.groups.length} group(s), ${p.messageCount} question(s)\n  Link: ${chatLink(context.publicBaseUrl, p.id)}`).join('\n')}`
+            ? `Found ${panelList.length} panel(s):\n\n| Panel | Groups | Questions | Link |\n|-------|--------|-----------|------|\n${panelList.map(p => `| ${p.name} | ${p.groups.length} | ${p.messageCount} | [Open](${chatLink(context.publicBaseUrl, p.id)}) |`).join('\n')}`
             : searchQuery
               ? `No panels matching "${searchQuery}". Use list_panels without a search query to see all panels.`
               : 'No panels found. Create one using the create_panel tool.',
