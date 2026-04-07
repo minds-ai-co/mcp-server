@@ -21,7 +21,9 @@ export const createPanelTool = {
 
 Workflow: first create Minds (create_mind), then group them here into a panel, then survey with ask_panel.
 
-You can create new groups inline (provide groupConfigs with names and Mind IDs) or attach existing groups by ID (use list_groups to find them). Use list_minds to get Mind IDs.`,
+You can create new groups inline (provide groupConfigs with names and Mind IDs) or attach existing groups by ID (use list_groups to find them). Use list_minds to get Mind IDs.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: createPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'low' as const, timeoutHint: 15000, confirmationHint: false },
   },

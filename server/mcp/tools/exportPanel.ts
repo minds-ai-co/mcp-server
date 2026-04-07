@@ -20,7 +20,9 @@ Formats:
 - "pdf": Branded PDF with executive summary and recommendations — queued async, use get_panel_status to check when ready
 - "json": Raw structured data for further analysis
 
-Requires a panel with at least one answered question (use ask_panel first).`,
+Requires a panel with at least one answered question (use ask_panel first).
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: exportPanelSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
   },

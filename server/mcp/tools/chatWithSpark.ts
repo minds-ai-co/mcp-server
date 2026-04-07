@@ -25,7 +25,9 @@ export const chatWithSparkTool = {
     description: `Send a message to one of the user's Minds and get a response. Use this for 1:1 conversations with a single Mind — for surveying multiple Minds at once, use ask_panel instead.
 
 Supports multi-turn conversations and fuzzy name matching (e.g., "my marketing expert").
-Provide sparkId (UUID) or sparkName — use list_minds to find available Minds.`,
+Provide sparkId (UUID) or sparkName — use list_minds to find available Minds.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: chatWithSparkSchema,
     annotations: {
       readOnlyHint: true,

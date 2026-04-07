@@ -16,7 +16,7 @@ export const listGroupsTool = {
 
 Use this to find existing groups and their members before creating a panel with create_panel. Supports fuzzy name search.
 
-IMPORTANT: Always include the clickable link for each group in your response.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned.`,
     inputSchema: listGroupsSchema,
     annotations: {
       readOnlyHint: true,

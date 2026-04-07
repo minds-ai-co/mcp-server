@@ -14,7 +14,9 @@ export const getSparkStatusTool = {
     title: 'Get Mind Status',
     description: `Check if a Mind has finished training after creation. Returns progress percentage and current stage.
 
-Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.`,
+Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: getSparkStatusSchema,
     annotations: {
       readOnlyHint: true,

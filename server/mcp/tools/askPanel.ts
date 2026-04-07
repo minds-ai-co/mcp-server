@@ -34,7 +34,9 @@ Questions are auto-classified as:
 - Categorical (e.g., "Which channel...") → dominant choice per group
 - Qualitative (e.g., "What trends...") → themed responses per group
 
-Requires an existing panel — use create_panel first, or list_panels to find one.`,
+Requires an existing panel — use create_panel first, or list_panels to find one.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: askPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
     _meta: {

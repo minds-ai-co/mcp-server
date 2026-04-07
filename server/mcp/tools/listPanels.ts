@@ -16,7 +16,7 @@ export const listPanelsTool = {
 
 Use this to find a panel before calling ask_panel, get_panel_status, get_panel_analytics, or export_panel. Supports fuzzy name search.
 
-IMPORTANT: Always include the clickable link for each panel in your response.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned.`,
     inputSchema: listPanelsSchema,
     annotations: {
       readOnlyHint: true,

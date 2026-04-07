@@ -26,7 +26,7 @@ export const listSparksTool = {
 Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel.
 Supports fuzzy name search.
 
-IMPORTANT: Always include the clickable link for each Mind in your response. The tool output contains a link per Mind — pass these through to the user.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned — they contain encoded parameters that break if changed.`,
     inputSchema: listSparksSchema,
     annotations: {
       readOnlyHint: true,
