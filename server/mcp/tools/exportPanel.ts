@@ -7,17 +7,18 @@ import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { chatLink } from '../utils/links'
 
-interface ExportPanelArgs { panelId?: string; panelName?: string; format?: 'md' | 'pdf' | 'json' }
+interface ExportPanelArgs { panelId?: string; panelName?: string; format?: 'pdf' | 'json' | 'csv' | 'xls' }
 
 export const exportPanelTool = {
   name: 'export_panel',
   config: {
     title: 'Export Panel Report',
-    description: `Export a panel's survey results as a report. Compiles all questions and responses into a structured document with cross-group analysis.
+    description: `Export a panel's survey results. Compiles all questions and responses into a structured document.
 
 Formats:
-- "md" (default): Markdown report returned inline
-- "pdf": Branded PDF with executive summary and recommendations — queued async, use get_panel_status to check when ready
+- "pdf" (default): Branded PDF with executive summary and recommendations — queued async, use get_panel_status to check when ready
+- "csv": Spreadsheet with all questions, groups, personas, answers, and full responses
+- "xls": Excel-compatible spreadsheet (same data as CSV)
 - "json": Raw structured data for further analysis
 
 Requires a panel with at least one answered question (use ask_panel first).
@@ -41,43 +42,64 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       }
       if (!resolvedPanelId) return { content: [{ type: 'text' as const, text: 'Provide panelId or panelName.' }], isError: true }
 
-      const format = args.format || 'md'
+      const format = args.format || 'pdf'
 
-      // JSON: return structured panel data directly
-      if (format === 'json') {
+      // Fetch panel data (needed for CSV, XLS, JSON)
+      if (format === 'json' || format === 'csv' || format === 'xls') {
         const panel = await apiCall(`/api/v1/panels/${resolvedPanelId}`)
         const data = panel.data || panel
+
+        if (format === 'json') {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
+            structuredContent: { panelId: resolvedPanelId, format: 'json', data },
+          }
+        }
+
+        // Build tabular data from panel messages
+        const separator = format === 'xls' ? '\t' : ','
+        const rows: string[][] = [['Question', 'Group', 'Persona', 'Discipline', 'Answer', 'Full Response']]
+
+        for (const msg of data.messages || []) {
+          if (msg.role !== 'assistant') continue
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (!metadata?.outputData) continue
+          const od = metadata.outputData
+          const question = od.title || od.formattedQuestion || ''
+
+          for (const group of od.groups || []) {
+            for (const answer of group.answers || []) {
+              const escape = (s: string) => format === 'csv' ? `"${(s || '').replace(/"/g, '""')}"` : (s || '').replace(/\t/g, ' ')
+              rows.push([
+                escape(question),
+                escape(group.group),
+                escape(answer.persona),
+                escape(answer.discipline || ''),
+                escape(answer.value),
+                escape(answer.message || ''),
+              ])
+            }
+          }
+        }
+
+        const content = rows.map(r => r.join(separator)).join('\n')
+        const ext = format === 'xls' ? 'xls' : 'csv'
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
-          structuredContent: { panelId: resolvedPanelId, format: 'json', data },
+          content: [{ type: 'text' as const, text: `${format.toUpperCase()} export with ${rows.length - 1} data rows.\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+          structuredContent: { panelId: resolvedPanelId, format, content, filename: `panel_export.${ext}`, rows: rows.length - 1 },
         }
       }
 
       // PDF: async queue job, return job ID
-      if (format === 'pdf') {
-        const result = await apiCall(`/api/v1/panels/${resolvedPanelId}/export`, { method: 'POST', body: JSON.stringify({ format: 'pdf' }) })
-        const jobId = result.data?.jobId || result.jobId
-        if (jobId) {
-          return {
-            content: [{ type: 'text' as const, text: `PDF export started (job: ${jobId}). Use get_panel_status to check when the download is ready.\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
-            structuredContent: { panelId: resolvedPanelId, format: 'pdf', jobId, status: 'queued' },
-          }
+      const result = await apiCall(`/api/v1/panels/${resolvedPanelId}/export`, { method: 'POST', body: JSON.stringify({ format: 'pdf' }) })
+      const jobId = result.data?.jobId || result.jobId
+      if (jobId) {
+        return {
+          content: [{ type: 'text' as const, text: `PDF export started (job: ${jobId}). Use get_panel_status to check when the download is ready.\n\nLink: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+          structuredContent: { panelId: resolvedPanelId, format: 'pdf', jobId, status: 'queued' },
         }
-        // If no jobId, the API may have returned the PDF content directly
-        const content = result.data?.content || result.content
-        if (content) {
-          return {
-            content: [{ type: 'text' as const, text: 'PDF export generated.' }],
-            structuredContent: { panelId: resolvedPanelId, format: 'pdf', content },
-          }
-        }
-        return { content: [{ type: 'text' as const, text: 'PDF export failed — no job ID or content returned.' }], isError: true }
       }
-
-      // MD: synchronous markdown report (LLM-generated, can be slow)
-      const result = await apiCall(`/api/v1/panels/${resolvedPanelId}/export`, { method: 'POST', body: JSON.stringify({ format: 'md' }), timeout: 180000 })
-      const report = result.data?.content || result.content || 'No report generated'
-      return { content: [{ type: 'text' as const, text: `${report}\n\n---\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }], structuredContent: { panelId: resolvedPanelId, format: 'md', report } }
+      return { content: [{ type: 'text' as const, text: 'PDF export failed — no job ID returned.' }], isError: true }
     } catch (error) {
       return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true }
     }

@@ -53,7 +53,7 @@ export const askPanelSchema = {
 export const exportPanelSchema = {
   panelId: z.string().optional().describe('Panel ID (UUID)'),
   panelName: z.string().optional().describe('Panel name (fuzzy matched)'),
-  format: z.enum(['md', 'pdf', 'json']).optional().describe('Export format: "md" (default) for inline markdown, "pdf" for branded PDF (async), "json" for structured data'),
+  format: z.enum(['pdf', 'json', 'csv', 'xls']).optional().describe('Export format: "pdf" (default) branded report, "csv" spreadsheet, "xls" Excel, "json" raw data'),
 }
 
 export const listPanelsSchema = {
