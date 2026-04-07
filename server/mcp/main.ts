@@ -12,7 +12,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createMindsServer } from './server'
 
-const API_URL = 'https://getminds.ai'
+const API_URL = process.env.MINDSAI_API_URL || 'https://getminds.ai'
 const PORT = parseInt(process.env.PORT || '3001', 10)
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'
 
@@ -58,7 +58,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
         sessionIdGenerator: () => newSessionId,
       })
 
-      const server = createMindsServer(API_URL, apiKey)
+      const server = createMindsServer({ publicBaseUrl: API_URL, authToken: apiKey })
       await server.connect(transport)
 
       sessions.set(newSessionId, { transport, server })

@@ -19,7 +19,8 @@ import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-
 // Utilities
 import { generateUserDiscoveryToken } from './utils/tokens'
 import { tokenUserIdCache } from './utils/cache'
-import { validateOAuthToken } from './utils/apiClient'
+import { validateOAuthToken as validateOAuthTokenHttp } from './utils/apiClient'
+import { validateOAuthToken as validateOAuthTokenDb } from '~/server/utils/validateOAuthToken'
 import { logger, CACHE_TTL } from './config'
 
 // Tools
@@ -30,12 +31,24 @@ import { getSparkStatusTool } from './tools/getSparkStatus'
 import { createPanelTool } from './tools/createPanel'
 import { askPanelTool } from './tools/askPanel'
 import { exportPanelTool } from './tools/exportPanel'
+import { listPanelsTool } from './tools/listPanels'
+import { getPanelStatusTool } from './tools/getPanelStatus'
+import { listGroupsTool } from './tools/listGroups'
+import { createGroupTool } from './tools/createGroup'
+import { getPanelAnalyticsTool } from './tools/getPanelAnalytics'
 
 // Resources
 import { sparkWidgetResource } from './resources/sparkWidget'
+import { responseWidgetResource } from './resources/responseWidget'
 
 // Types
-import type { McpServerContext } from './types'
+import type { McpServerContext, CreateMindsServerOptions } from './types'
+
+/**
+ * Tracks whether the last tool invocation on a server returned isError.
+ * Used by the route handler to emit correct audit events (toolSuccess vs toolFailure).
+ */
+export const serverLastToolError = new WeakMap<object, boolean>()
 
 /**
  * Server capabilities declaration
@@ -64,20 +77,62 @@ export const SERVER_CAPABILITIES = {
 } as const
 
 /**
+ * Tool definitions with their registration metadata
+ */
+const allTools = [
+  { tool: listSparksTool, needsToken: false },
+  { tool: createSparkTool, needsToken: true },
+  { tool: chatWithSparkTool, needsToken: false },
+  { tool: getSparkStatusTool, needsToken: false },
+  { tool: createPanelTool, needsToken: true },
+  { tool: askPanelTool, needsToken: true },
+  { tool: exportPanelTool, needsToken: true },
+  { tool: listPanelsTool, needsToken: false },
+  { tool: getPanelStatusTool, needsToken: false },
+  { tool: listGroupsTool, needsToken: false },
+  { tool: createGroupTool, needsToken: true },
+  { tool: getPanelAnalyticsTool, needsToken: false },
+]
+
+/**
+ * Tools that should use ext-apps registration (registerAppTool) when useExtApps is true.
+ * Other tools always use server.registerTool.
+ */
+// Only tools with the Response Widget use ext-apps registration
+const extAppToolNames = new Set([
+  'chat_with_mind',
+  'ask_panel',
+  'get_panel_status',
+])
+
+/**
  * Create and configure the Minds AI MCP server
  */
-export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai', authToken: string = '') {
-  const server = new McpServer({
-    name: 'mindsai-personas',
-    version: '1.0.0',
-    description: 'Create AI personas, digital twins, and expert advisors. Train AI on people, topics, or websites. Chat with your custom AI experts.',
-    _meta: {
+export function createMindsServer(options: CreateMindsServerOptions = {}) {
+  const {
+    publicBaseUrl = 'https://getminds.ai',
+    authToken = '',
+    apiBaseUrl,
+    useExtApps = true,
+  } = options
+
+  const serverOptions: Record<string, unknown> = {
+    name: 'minds-ai',
+    version: '2.0.0',
+    description: 'Minds AI — synthetic market research. Create Minds (AI experts, consumer personas, digital twins), organize them into groups, run panel surveys, analyze results, and export branded reports.',
+  }
+
+  // Only include OAuth discovery metadata for ext-apps (HTTP transport)
+  if (useExtApps) {
+    serverOptions._meta = {
       'mcp/authorization': {
         type: 'oauth2',
         discoveryUrl: `${publicBaseUrl}/.well-known/oauth-protected-resource`,
       },
-    },
-  })
+    }
+  }
+
+  const server = new McpServer(serverOptions as any)
 
   // Store auth token for use in tool calls
   const apiKey = authToken
@@ -85,6 +140,10 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
   // Track the latest spark created by this user session
   let latestSparkId: string | null = null
   let latestSparkCreatedAt: number = 0
+
+  // Track the latest panel question for widget rendering
+  let latestPanelId: string | null = null
+  let latestOutputData: any = null
 
   // User discovery token state
   let userDiscoveryToken: string | null = null
@@ -107,8 +166,20 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
         return
       }
 
-      // Validate the OAuth token to get user ID
-      const userId = await validateOAuthToken(apiKey)
+      // Validate the auth token to get user ID
+      // API keys (minds_/aox_) need HTTP validation via /api/v1/auth/me
+      // OAuth tokens can use direct DB validation when running in-process
+      const isApiKey = apiKey.startsWith('minds_') || apiKey.startsWith('aox_')
+      let userId: string | null = null
+      if (apiBaseUrl) {
+        userId = await validateOAuthTokenHttp(apiKey, apiBaseUrl)
+      } else if (isApiKey) {
+        // API keys require HTTP validation (DB validator only handles OAuth tokens)
+        userId = await validateOAuthTokenHttp(apiKey)
+      } else {
+        const result = await validateOAuthTokenDb(apiKey)
+        userId = result?.userId ?? null
+      }
       if (userId) {
         authenticatedUserId = userId
         userDiscoveryToken = generateUserDiscoveryToken(userId)
@@ -152,11 +223,19 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
       userDiscoveryToken,
       latestSparkId,
       latestSparkCreatedAt,
+      latestPanelId,
+      latestOutputData,
+      ...(apiBaseUrl ? { apiBaseUrl } : {}),
       setLatestSpark: (sparkId: string) => {
         latestSparkId = sparkId
         latestSparkCreatedAt = Date.now()
         logger.debug('Stored latestSparkId for widget', { sparkId: latestSparkId.slice(0, 8) + '...' })
-      }
+      },
+      setLatestPanel: (panelId: string, outputData?: any) => {
+        latestPanelId = panelId
+        if (outputData) latestOutputData = outputData
+        logger.debug('Stored latestPanelId for widget', { panelId: panelId.slice(0, 8) + '...' })
+      },
     }
   }
 
@@ -164,9 +243,12 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
   // Register Resources
   // ============================================
 
-  // Unified Spark Widget (supports both creation and chat modes)
-  registerAppResource(
-    server,
+  const resourceRegistrar = useExtApps
+    ? (name: string, uri: string, metadata: any, handler: any) => registerAppResource(server, name, uri, metadata, handler)
+    : (name: string, uri: string, metadata: any, handler: any) => server.registerResource(name, uri, metadata, handler)
+
+  // Legacy spark widget (kept for backward compat with existing ChatGPT installs)
+  resourceRegistrar(
     sparkWidgetResource.name,
     sparkWidgetResource.uri,
     sparkWidgetResource.metadata,
@@ -183,58 +265,39 @@ export function createMindsServer(publicBaseUrl: string = 'https://getminds.ai',
     }
   )
 
+  // Response widget — the only widget using shared/ui components
+  resourceRegistrar(
+    responseWidgetResource.name,
+    responseWidgetResource.uri,
+    responseWidgetResource.metadata,
+    async () => {
+      await ensureTokenReady()
+      return responseWidgetResource.handler(getContext())
+    }
+  )
+
+  // Creation and Info widgets disabled — these tools return rich text content
+  // that LLMs present directly. No custom widget UI needed.
+
   // ============================================
   // Register Tools
   // ============================================
 
-  server.registerTool(
-    listSparksTool.name,
-    listSparksTool.config,
-    async (args) => listSparksTool.handler(args as any, getContext())
-  )
+  for (const { tool, needsToken } of allTools) {
+    const useExtApp = useExtApps && extAppToolNames.has(tool.name)
+    const register = useExtApp
+      ? (name: string, config: any, handler: any) => registerAppTool(server, name, config, handler)
+      : (name: string, config: any, handler: any) => server.registerTool(name, config, handler)
 
-  registerAppTool(
-    server,
-    createSparkTool.name,
-    createSparkTool.config,
-    async (args) => {
-      await ensureTokenReady()
-      return createSparkTool.handler(args as any, getContext())
+    const wrappedHandler = async (args: any) => {
+      if (needsToken) await ensureTokenReady()
+      const result = await tool.handler(args as any, getContext())
+      serverLastToolError.set(server, result?.isError === true)
+      return result
     }
-  )
 
-  registerAppTool(
-    server,
-    chatWithSparkTool.name,
-    chatWithSparkTool.config,
-    async (args) => chatWithSparkTool.handler(args as any, getContext())
-  )
-
-  registerAppTool(
-    server,
-    getSparkStatusTool.name,
-    getSparkStatusTool.config,
-    async (args) => getSparkStatusTool.handler(args as any, getContext())
-  )
-
-  // Panel tools
-  server.registerTool(
-    createPanelTool.name,
-    createPanelTool.config,
-    async (args) => { await ensureTokenReady(); return createPanelTool.handler(args as any, getContext()) }
-  )
-
-  server.registerTool(
-    askPanelTool.name,
-    askPanelTool.config,
-    async (args) => { await ensureTokenReady(); return askPanelTool.handler(args as any, getContext()) }
-  )
-
-  server.registerTool(
-    exportPanelTool.name,
-    exportPanelTool.config,
-    async (args) => { await ensureTokenReady(); return exportPanelTool.handler(args as any, getContext()) }
-  )
+    register(tool.name, tool.config, wrappedHandler)
+  }
 
   return server
 }

@@ -27,8 +27,8 @@ export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
   authenticatedLimit: 1000,    // 1000 requests per minute for authenticated
   windowMs: 60 * 1000,         // 1 minute window
   operationLimits: {
-    'create_ai_persona_or_digital_twin': 20,  // 20 creates per minute
-    'talk_to_ai_persona': 60,                  // 60 chat messages per minute
+    'create_mind': 20,  // 20 creates per minute
+    'chat_with_mind': 60,                  // 60 chat messages per minute
     'tools/call': 100,                         // 100 tool calls per minute
   },
 }
@@ -231,6 +231,11 @@ export function checkRateLimit(
   operation?: string
 ): RateLimitResult {
   const limiter = getRateLimiter()
+  // Skip rate limiting for localhost (dev/test)
+  if (ip === '127.0.0.1' || ip === '::1') {
+    return { allowed: true, headers: { 'X-RateLimit-Limit': 'unlimited', 'X-RateLimit-Remaining': 'unlimited' } }
+  }
+
   const identifier = userId || `ip:${ip}`
   const isAuthenticated = !!userId
 

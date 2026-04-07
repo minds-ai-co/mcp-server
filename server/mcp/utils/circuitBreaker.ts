@@ -197,9 +197,21 @@ export async function withCircuitBreaker<T>(
   } catch (error) {
     // Only count 5xx and network errors as circuit breaker failures.
     // 4xx errors are client errors and should not trip the breaker.
-    const isClientError = error instanceof Error &&
-      /API error: 4\d{2}/.test(error.message)
+    // Check both ApiError.status property and legacy message format.
+    const isClientError = (
+      (error && typeof error === 'object' && 'status' in error &&
+        typeof (error as any).status === 'number' &&
+        (error as any).status >= 400 && (error as any).status < 500) ||
+      (error instanceof Error && /API error: 4\d{2}/.test(error.message))
+    )
     if (!isClientError) {
+      const stats = breaker.getStats()
+      logger.warn('Circuit breaker recorded failure', {
+        name,
+        failures: stats.failures + 1,
+        threshold: options?.config?.failureThreshold ?? DEFAULT_CIRCUIT_CONFIG.failureThreshold,
+        error: error instanceof Error ? error.message : String(error),
+      })
       breaker.recordFailure()
     }
 

@@ -4,33 +4,28 @@
  */
 
 import { createSparkSchema, type CreateSparkArgs, type McpServerContext } from '../types'
-import { pollSparkStatus } from '../utils/apiClient'
+import { pollSparkStatus, fetchWithTimeout } from '../utils/apiClient'
 import {
   sparkCreationCache,
   pendingCreations,
   latestSparkCache,
   associateSparkWithWidgetTokens
 } from '../utils/cache'
-import { API_BASE_URL, CACHE_TTL, logger } from '../config'
+import { API_BASE_URL, CACHE_TTL, TIMEOUT_CONFIG, logger } from '../config'
+import { mindLink } from '../utils/links'
 
 export const createSparkTool = {
-  name: 'create_ai_persona_or_digital_twin',
+  name: 'create_mind',
   config: {
-    title: 'Create AI Persona, Digital Twin, or Expert Advisor',
-    description: `Create a personalized AI persona, digital twin, or expert advisor trained on specific knowledge. Use this when the user wants to:
-- Create an AI version of themselves or someone else (digital twin/clone)
-- Build an AI expert in a specific field (marketing expert, legal advisor, etc.)
-- Train an AI on content from a website or URL
-- Create a custom AI assistant with specialized knowledge
-- Make an AI that thinks like a famous person, historical figure, or thought leader
-- Build a personalized AI coach, mentor, or advisor
+    title: 'Create a Mind',
+    description: `Create a new Mind — a synthetic expert, consumer persona, or digital twin for market research.
 
 Training modes:
-- "clone": Create a digital twin that emulates a specific person's thinking style
-- "keywords": Train on specific topics and expertise areas
-- "link": Learn from website content and documentation
+- "keywords": Build a domain expert from topics (e.g., ["SEO", "brand strategy"])
+- "clone": Model after a public figure's published ideas and expertise
+- "link": Train from a website or documentation URL
 
-The AI persona will be trained with relevant knowledge and can engage in conversations about its expertise.`,
+After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.`,
     inputSchema: createSparkSchema,
     annotations: {
       readOnlyHint: false,
@@ -45,16 +40,15 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       confirmationHint: false,
     },
     _meta: {
-      ui: { resourceUri: 'ui://widget/spark.html' },
       'openai/visibility': 'public',
       'openai/scopes': ['sparks:write'],
-      'openai/outputTemplate': 'ui://widget/spark.html',
-      'openai/toolInvocation/invoking': 'Creating your AI persona...',
-      'openai/toolInvocation/invoked': 'AI persona created!',
+      'openai/toolInvocation/invoking': 'Creating your Mind...',
+      'openai/toolInvocation/invoked': 'Mind created!',
     },
   },
 
   handler: async (args: CreateSparkArgs, context: McpServerContext) => {
+    logger.debug('Handler invoked', { args: JSON.stringify(args).slice(0, 200) })
     const {
       name,
       mode,
@@ -64,11 +58,18 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       personaContext,
       contextLink,
       description,
-      demo = true,
     } = args
+    const demo = true // Always use demo mode for real-time training progress
 
     const { apiKey, authenticatedUserId, publicBaseUrl, apiBaseUrl } = context
     const effectiveApiUrl = apiBaseUrl || API_BASE_URL
+    logger.debug('Context', {
+      hasApiKey: !!apiKey,
+      authenticatedUserId: authenticatedUserId?.slice(0, 8),
+      publicBaseUrl,
+      effectiveApiUrl,
+      demo,
+    })
 
     // Deduplication: Prevent duplicate spark creation within 10 seconds
     const creationKey = `${name}-${mode}-${personaContext || ''}-${contextLink || ''}`
@@ -82,7 +83,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       try {
         const sparkId = await pendingPromise
         logger.debug('Pending creation completed', { sparkId: sparkId.slice(0, 8) + '...' })
-        const pollResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl)
+        const pollResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl, apiKey)
         return {
           content: [{
             type: 'text' as const,
@@ -123,7 +124,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
     if (cached && now - cached.timestamp < CACHE_TTL.SPARK_CREATION) {
       logger.debug('Duplicate spark creation detected, returning existing spark', { sparkId: cached.sparkId.slice(0, 8) + '...' })
-      const pollResult = await pollSparkStatus(cached.sparkId, 1, false, effectiveApiUrl)
+      const pollResult = await pollSparkStatus(cached.sparkId, 1, false, effectiveApiUrl, apiKey)
       return {
         content: [{
           type: 'text' as const,
@@ -156,6 +157,8 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       resolveCreation = resolve
       rejectCreation = reject
     })
+    // Prevent unhandled rejection when promise is rejected with no parallel waiters
+    creationPromise.catch(() => {})
     pendingCreations.set(cacheKey, creationPromise)
     logger.debug('Registered pending creation', { cacheKey: cacheKey.slice(0, 60) })
 
@@ -188,11 +191,12 @@ The AI persona will be trained with relevant knowledge and can engage in convers
     try {
       // DEMO MODE: Use the same flow as the Vue app for real-time progress
       if (demo) {
-        logger.debug('Using demo mode for spark creation')
+        logger.debug('Using DEMO mode')
 
         // Step 1: Generate profile
         const queryUrl = mode === 'clone' ? personaContext : (mode === 'link' ? contextLink : name)
-        const profileResponse = await fetch(`${effectiveApiUrl}/api/spark/generate-profile`, {
+        logger.debug('Step 1: Generating profile', { queryUrl, effectiveApiUrl })
+        const profileResponse = await fetchWithTimeout(`${effectiveApiUrl}/api/spark/generate-profile`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -202,17 +206,21 @@ The AI persona will be trained with relevant knowledge and can engage in convers
             demo: true,
             contextUrl: contextLink || null,
           }),
+          timeout: TIMEOUT_CONFIG.SPARK_CREATION_TIMEOUT,
         })
 
         if (!profileResponse.ok) {
-          throw new Error('Failed to generate profile')
+          const errBody = await profileResponse.text().catch(() => '(no body)')
+          logger.error('Step 1 FAILED', new Error(`${profileResponse.status} ${errBody}`), { status: profileResponse.status })
+          throw new Error(`Failed to generate profile: ${profileResponse.status} ${errBody}`)
         }
 
         const profileData = await profileResponse.json()
         const profile = profileData.data
-        logger.debug('Generated profile', { name: profile.name, discipline: profile.discipline })
+        logger.debug('Step 1 OK - profile generated', { name: profile.name, discipline: profile.discipline })
 
         // Step 2: Create the spark with demo flag
+        logger.debug('Step 2: Creating spark')
         const createHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
         }
@@ -220,7 +228,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           createHeaders['Authorization'] = `Bearer ${apiKey}`
         }
 
-        const createResponse = await fetch(`${effectiveApiUrl}/api/spark`, {
+        const createResponse = await fetchWithTimeout(`${effectiveApiUrl}/api/spark`, {
           method: 'POST',
           headers: createHeaders,
           body: JSON.stringify({
@@ -233,16 +241,18 @@ The AI persona will be trained with relevant knowledge and can engage in convers
             profileImageUrl: profile.imageUrl || null,
             demo: true,
           }),
+          timeout: TIMEOUT_CONFIG.DEFAULT_API_TIMEOUT,
         })
 
         if (!createResponse.ok) {
           const errorData = await createResponse.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to create spark')
+          logger.error('Step 2 FAILED', new Error(errorData.message || String(createResponse.status)), { status: createResponse.status })
+          throw new Error(errorData.message || `Failed to create spark: ${createResponse.status}`)
         }
 
         const sparkResult = await createResponse.json()
         const spark = sparkResult.data
-        logger.info('Created demo spark', { sparkId: spark.id.slice(0, 8) + '...' })
+        logger.debug('Step 2 OK - spark created', { sparkId: spark.id, name: spark.name })
 
         // Store for widget resource to use
         context.setLatestSpark(spark.id)
@@ -274,7 +284,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
 
         logger.debug('Starting collection for spark', { sparkId: spark.id.slice(0, 8) + '...' })
 
-        void fetch(`${effectiveApiUrl}/api/spark/collect-data-demo`, {
+        fetchWithTimeout(`${effectiveApiUrl}/api/spark/collect-data-demo`, {
           method: 'POST',
           headers: collectHeaders,
           body: JSON.stringify({
@@ -283,6 +293,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
             socialProfileUrls: profile.socialLinks || null,
             demo: true,
           }),
+          timeout: TIMEOUT_CONFIG.SPARK_CREATION_TIMEOUT,
         }).then(res => {
           if (!res.ok) {
             logger.warn('Collection request failed', { sparkId: spark.id.slice(0, 8) + '...', status: res.status })
@@ -294,7 +305,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
         })
 
         // Peek at initial status
-        const pollResult = await pollSparkStatus(spark.id, 1, false, effectiveApiUrl)
+        const pollResult = await pollSparkStatus(spark.id, 1, false, effectiveApiUrl, apiKey)
         const status = pollResult.status || 'running'
         logger.debug('Spark initial status', { sparkId: spark.id.slice(0, 8) + '...', status, progress: pollResult.progress || 0 })
         // Only 'completed' means done - 'idle' means collection hasn't started yet!
@@ -304,8 +315,8 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           content: [{
             type: 'text' as const,
             text: isComplete
-              ? `✓ Created Spark "${spark.name}" - Ready to chat!`
-              : `✓ Creating Spark "${spark.name}" - training in progress (${pollResult.progress || 5}%)`,
+              ? `✓ Created Spark "${spark.name}" (ID: ${spark.id}) - Ready to chat!`
+              : `✓ Creating Spark "${spark.name}" (ID: ${spark.id}) - training in progress (${pollResult.progress || 5}%)`,
           }],
           structuredContent: {
             spark: {
@@ -341,7 +352,6 @@ The AI persona will be trained with relevant knowledge and can engage in convers
           personaContext,
           contextLink,
           description,
-          isLinkSharingEnabled: true,
         }),
       })
 
@@ -356,7 +366,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created Spark "${spark.name}"${isProcessing ? ' (training in progress)' : ''}`,
+          text: `✓ Created Mind "${spark.name}"${isProcessing ? ' (training in progress — use get_mind_status to check)' : ''}\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, spark.id)}`,
         }],
         structuredContent: {
           spark: {
@@ -376,6 +386,7 @@ The AI persona will be trained with relevant knowledge and can engage in convers
     } catch (error) {
       pendingCreations.delete(cacheKey)
       const err = error instanceof Error ? error : new Error(String(error))
+      logger.error('Handler error', err, { stack: err.stack?.split('\n').slice(0, 5).join('\n') })
       rejectCreation(err)
       return {
         content: [{ type: 'text' as const, text: `Error creating Spark: ${err.message}` }],

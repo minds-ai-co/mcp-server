@@ -52,8 +52,9 @@ export const CORS_CONFIG = {
     /^https:\/\/(staging\.)?art-of-x\.com$/,  // art-of-x.com (legacy)
     /^https:\/\/(staging\.)?getminds\.ai$/,  // getminds.ai (primary)
     /^https?:\/\/(api\.)?getminds\.ai$/,     // api.getminds.ai (MCP API)
+    /^https:\/\/.*\.ondigitalocean\.app$/,   // DigitalOcean App Platform hostnames
     // ngrok tunnels - development only
-    ...(isDevelopment ? [/^https:\/\/.*\.ngrok(-free)?\.app$/] : []),
+    ...(isDevelopment ? [/^https:\/\/.*\.ngrok(-free)?\.(app|dev)$/] : []),
   ],
 
   // Methods and headers
@@ -135,8 +136,8 @@ export const RATE_LIMIT_CONFIG = {
   windowMs: 60 * 1000, // 1 minute
   /** Stricter limits for specific operations */
   operationLimits: {
-    'create_ai_persona_or_digital_twin': 20,
-    'talk_to_ai_persona': 60,
+    'create_mind': 20,
+    'chat_with_mind': 60,
     'tools/call': 100,
   } as Record<string, number>,
 } as const
@@ -248,23 +249,38 @@ class McpLogger {
 export const logger = new McpLogger()
 
 /**
+ * Required OAuth scopes per MCP tool
+ * Enforced at the route level before tool execution
+ */
+export const TOOL_SCOPES: Record<string, string[]> = {
+  'list_minds': ['sparks:read'],
+  'create_mind': ['sparks:write'],
+  'chat_with_mind': ['sparks:chat'],
+  'get_mind_status': ['sparks:read'],
+  'create_panel': ['flows:write'],
+  'ask_panel': ['flows:write'],
+  'export_panel': ['flows:read'],
+}
+
+/**
  * Public methods that don't require authentication
- * Used for ChatGPT connector setup and discovery
+ * Only protocol handshake — all discovery and execution requires auth
  */
 export const PUBLIC_METHODS = [
   'initialize',
   'notifications/initialized',
+  'notifications/cancelled',
+  'ping',
   'tools/list',
   'resources/list',
-  'resources/read',
-  'prompts/list',
-  'ping',
 ] as const
 
 /**
  * Tools that can be called without authentication (demo mode)
+ * NOTE: Keep this empty — public tools bypass the HTTP 401 OAuth challenge,
+ * which prevents clients like Claude from ever triggering the login flow.
  */
-export const PUBLIC_TOOLS = [] as const
+export const PUBLIC_TOOLS: string[] = []
 
 /**
  * Check if a method is public (doesn't require auth)
@@ -277,5 +293,5 @@ export function isPublicMethod(method: string): boolean {
  * Check if a tool is public (can be called without auth)
  */
 export function isPublicTool(toolName: string): boolean {
-  return PUBLIC_TOOLS.includes(toolName as any)
+  return PUBLIC_TOOLS.includes(toolName)
 }

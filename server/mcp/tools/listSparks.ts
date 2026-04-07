@@ -5,6 +5,7 @@
 
 import { listSparksSchema, type ListSparksArgs, type McpServerContext, type SparkData } from '../types'
 import { createApiClient } from '../utils/apiClient'
+import { mindLink, workspaceLink } from '../utils/links'
 
 /** Spark list item for display */
 interface SparkListItem {
@@ -17,15 +18,15 @@ interface SparkListItem {
 }
 
 export const listSparksTool = {
-  name: 'list_my_ai_personas',
+  name: 'list_minds',
   config: {
-    title: 'List My AI Personas & Digital Twins',
-    description: `List all AI personas, digital twins, and expert advisors you've created. Use this when the user wants to:
-- See their existing AI assistants or personas
-- Find a specific expert they created before
-- Check what digital twins they have available
-- Browse their AI advisor collection
-Supports fuzzy search by name to quickly find the right persona.`,
+    title: 'List Minds',
+    description: `List all Minds the user has created. A Mind is a synthetic expert, consumer persona, or digital twin trained on specific topics or data.
+
+Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel.
+Supports fuzzy name search.
+
+IMPORTANT: Always include the clickable link for each Mind in your response. The tool output contains a link per Mind — pass these through to the user.`,
     inputSchema: listSparksSchema,
     annotations: {
       readOnlyHint: true,
@@ -72,8 +73,8 @@ Supports fuzzy search by name to quickly find the right persona.`,
         content: [{
           type: 'text' as const,
           text: sparks.length > 0
-            ? `Found ${sparks.length} Spark(s):\n${sparkList.map((s) => `- ${s.name} (${s.type}): ${s.description || 'No description'}`).join('\n')}`
-            : 'No Sparks found. You can create one using the create_spark tool.',
+            ? `Found ${sparks.length} Mind(s):\n${sparkList.map((s) => `- **${s.name}** (${s.type || 'expert'}): ${s.description || 'No description'}\n  ID: ${s.id} · ${mindLink(context.publicBaseUrl, s.id)}`).join('\n')}\n\nOpen in Minds AI: ${workspaceLink(context.publicBaseUrl)}`
+            : `No Minds found. Create one using create_mind.\n\nOpen Minds AI: ${workspaceLink(context.publicBaseUrl)}`,
         }],
         structuredContent: { sparks: sparkList },
       }

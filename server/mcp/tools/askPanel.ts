@@ -1,26 +1,52 @@
 /**
- * Ask Panel Tool - asks a survey question to all groups in a panel
+ * Ask Panel Tool — submits a survey question, returns immediately.
+ *
+ * The SSE stream runs in the background. Use get_panel_status to
+ * track which Minds have answered and get final results.
  */
 import type { McpServerContext } from '../types'
 import { askPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
-import { logger, API_BASE_URL } from '../config'
+import { API_BASE_URL, logger } from '../config'
+import { chatLink } from '../utils/links'
+import {
+  createPendingQuestion,
+  updateTotal,
+  addAnswer,
+  markAggregating,
+  markCompleted,
+  markFailed,
+} from '../utils/pendingQuestions'
 
 interface AskPanelArgs { panelId?: string; panelName?: string; question: string; groupIds?: string[] }
 
 export const askPanelTool = {
   name: 'ask_panel',
   config: {
-    title: 'Ask Panel Question',
-    description: `Ask a survey question to all groups in a panel. Questions are auto-classified as scale (1-5, 1-10), categorical (yes/no, multiple choice), or qualitative (open-ended). Each AI persona responds with structured output, and results are aggregated with cross-group comparisons. Qualitative responses are clustered into topics. Supports fuzzy panel name matching.`,
+    title: 'Ask a Panel',
+    description: `Submit a research question to a panel. Returns immediately — each Mind answers in the background.
+
+Use get_panel_status to track progress (which Minds have answered) and get the final aggregated results.
+
+Questions are auto-classified as:
+- Scale (e.g., "Rate 1-10...") → mean, distribution per group
+- Categorical (e.g., "Which channel...") → dominant choice per group
+- Qualitative (e.g., "What trends...") → themed responses per group
+
+Requires an existing panel — use create_panel first, or list_panels to find one.`,
     inputSchema: askPanelSchema,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
+    _meta: {
+      ui: { resourceUri: 'ui://widget/response.html' },
+      'openai/outputTemplate': 'ui://widget/response.html',
+    },
   },
 
   handler: async (args: AskPanelArgs, context: McpServerContext) => {
     const { apiCall } = createApiClient({ authToken: context.apiKey, apiBaseUrl: context.apiBaseUrl })
     try {
+      // Resolve panel ID
       let resolvedPanelId = args.panelId
       if (!resolvedPanelId && args.panelName) {
         const panels = await apiCall('/api/v1/panels')
@@ -32,33 +58,120 @@ export const askPanelTool = {
       }
       if (!resolvedPanelId) return { content: [{ type: 'text' as const, text: 'Provide panelId or panelName.' }], isError: true }
 
-      // Call panel-stream SSE endpoint and collect results
+      // Create tracking entry
+      const pending = createPendingQuestion(resolvedPanelId, args.question)
+
+      // Store panel ID in session context so the widget resource can use it
+      context.setLatestPanel(resolvedPanelId)
+
+      // Fire SSE request in the background — don't await
       const baseUrl = context.apiBaseUrl || API_BASE_URL
-      const sseResponse = await fetch(`${baseUrl}/api/panel-stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(context.apiKey ? { Authorization: `Bearer ${context.apiKey}` } : {}) },
-        body: JSON.stringify({ flowId: resolvedPanelId, question: args.question, groupIds: args.groupIds }),
-      })
-      if (!sseResponse.ok) throw new Error(`Panel stream failed: ${sseResponse.status}`)
+      processSSEInBackground(pending.questionId, `${baseUrl}/api/v1/panels/${resolvedPanelId}/ask`, {
+        question: args.question,
+        groupIds: args.groupIds,
+      }, context.apiKey)
 
-      const text = await sseResponse.text()
-      let outputData: any = null
-      for (const line of text.split('\n')) {
-        if (line.startsWith('data: ')) {
-          try { const d = JSON.parse(line.slice(6)); if (d.type === 'result') outputData = d.outputData } catch {}
-        }
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Survey started (question: "${args.question.slice(0, 80)}${args.question.length > 80 ? '...' : ''}"). Use get_panel_status to track progress and get results.\n\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, resolvedPanelId)}`,
+        }],
+        structuredContent: {
+          questionId: pending.questionId,
+          panelId: resolvedPanelId,
+          question: args.question,
+          status: 'processing',
+        },
       }
-      if (!outputData) return { content: [{ type: 'text' as const, text: 'Survey completed but no results returned.' }], isError: true }
-
-      const lines: string[] = [`📊 Panel Results: ${outputData.title}`, `Type: ${outputData.type}`, '']
-      for (const g of outputData.groups || []) {
-        lines.push(`**${g.group}** (dominant: ${g.value})`)
-        for (const a of g.answers || []) lines.push(`  - ${a.persona}${a.discipline ? ` (${a.discipline})` : ''}: ${a.value}`)
-        lines.push('')
-      }
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }], structuredContent: { panelId: resolvedPanelId, question: args.question, outputData, outputType: 'bar' } }
     } catch (error) {
       return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true }
     }
   },
+}
+
+/**
+ * Process the SSE stream in the background, updating the pending question
+ * tracker as events arrive. Runs detached from the tool handler.
+ */
+function processSSEInBackground(
+  questionId: string,
+  url: string,
+  body: { question: string; groupIds?: string[] },
+  apiKey: string,
+) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 180_000) // 3 min max
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      clearTimeout(timeout)
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '')
+        let detail = errBody.slice(0, 200)
+        try { const p = JSON.parse(errBody); detail = p.statusMessage || p.message || detail } catch {}
+        markFailed(questionId, `HTTP ${response.status}: ${detail}`)
+        return
+      }
+
+      // Parse SSE stream line by line
+      const text = await response.text()
+      let currentData = ''
+
+      for (const line of text.split('\n')) {
+        if (line.startsWith('data: ')) {
+          currentData += line.slice(6)
+        } else if (line === '' && currentData) {
+          try {
+            const event = JSON.parse(currentData)
+            switch (event.type) {
+              case 'start':
+                updateTotal(questionId, event.total || 0)
+                break
+              case 'answer':
+                addAnswer(questionId, {
+                  sparkName: event.sparkName || event.persona || 'Unknown',
+                  groupName: event.groupName || event.group || '',
+                  value: event.answer || event.value || '',
+                  discipline: event.discipline,
+                })
+                break
+              case 'aggregating':
+                markAggregating(questionId)
+                break
+              case 'result':
+                markCompleted(questionId, event.outputData)
+                break
+            }
+          } catch {}
+          currentData = ''
+        }
+      }
+      // Handle trailing data without empty line
+      if (currentData) {
+        try {
+          const event = JSON.parse(currentData)
+          if (event.type === 'result') markCompleted(questionId, event.outputData)
+        } catch {}
+      }
+
+      // If we never got a result event, mark as failed
+      const q = (await import('../utils/pendingQuestions')).getQuestion(questionId)
+      if (q && q.status !== 'completed') {
+        markFailed(questionId, 'Stream ended without results')
+      }
+    })
+    .catch((err) => {
+      clearTimeout(timeout)
+      const msg = err.name === 'AbortError' ? 'Question timed out after 3 minutes' : err.message
+      markFailed(questionId, msg)
+      logger.warn('[ask_panel] Background SSE failed', { questionId, error: msg })
+    })
 }

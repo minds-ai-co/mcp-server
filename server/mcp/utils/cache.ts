@@ -84,6 +84,12 @@ export function cleanupCaches(): void {
   }
 }
 
+/** Periodic cache cleanup (every 5 minutes) */
+const cacheCleanupInterval = setInterval(cleanupCaches, 5 * 60 * 1000)
+if (cacheCleanupInterval.unref) {
+  cacheCleanupInterval.unref()
+}
+
 /**
  * Associate a spark with pending widget tokens
  * Called when a spark is created to link it with waiting widgets

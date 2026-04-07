@@ -1,27 +1,55 @@
 {
   "name": "mindsai-personas",
-  "version": "1.0.1",
-  "description": "Create AI personas, digital twins, and expert advisors. Train AI on people, topics, or websites. Chat with your custom AI experts.",
+  "version": "2.0.0",
+  "description": "Build AI knowledge bases, run multi-perspective research panels, and export branded reports. Train AI on topics, documents, or websites. Survey synthetic expert groups for market research and policy testing.",
   "author": "Minds AI",
   "homepage": "https://getminds.ai",
   "repository": "https://github.com/minds-ai-co/mcp-server",
   "transport": "http",
   "tools": [
     {
+      "name": "list_my_ai_personas",
+      "description": "List all your AI knowledge bases with optional fuzzy search"
+    },
+    {
       "name": "create_ai_persona_or_digital_twin",
-      "description": "Create a custom AI persona, digital twin, or expert advisor trained on any topic"
+      "description": "Create an AI knowledge base trained on topics, people, or websites"
     },
     {
       "name": "talk_to_ai_persona",
-      "description": "Chat with your created AI personas and get expert advice"
-    },
-    {
-      "name": "list_ai_personas",
-      "description": "List all your created AI personas and digital twins"
+      "description": "Chat with an AI knowledge base and get expert analysis"
     },
     {
       "name": "check_ai_persona_training_progress",
-      "description": "Check the training status of your AI persona"
+      "description": "Check the training status of an AI knowledge base"
+    },
+    {
+      "name": "create_panel",
+      "description": "Create a research panel with groups of AI knowledge bases for comparative analysis"
+    },
+    {
+      "name": "ask_panel",
+      "description": "Submit a research question to a panel — responses streamed in real-time with cross-group comparison"
+    },
+    {
+      "name": "list_panels",
+      "description": "List all research panels with group composition and message counts"
+    },
+    {
+      "name": "get_panel_status",
+      "description": "Get detailed panel info including groups, messages, and export status"
+    },
+    {
+      "name": "get_panel_analytics",
+      "description": "Compute statistics for panel questions — mean, distribution, themes, divergence"
+    },
+    {
+      "name": "export_panel",
+      "description": "Export panel results as markdown, branded PDF, or JSON data"
+    },
+    {
+      "name": "list_groups",
+      "description": "List knowledge base groups with member details"
     }
   ],
   "resources": [

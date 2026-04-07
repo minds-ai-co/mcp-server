@@ -22,9 +22,9 @@
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createStdioServer } from './stdioServer'
+import { createMindsServer } from './server'
 
-const API_URL = 'https://getminds.ai'
+const API_URL = process.env.MINDSAI_API_URL || 'https://getminds.ai'
 
 async function main() {
   const apiKey = process.env.MINDSAI_API_KEY
@@ -40,7 +40,7 @@ async function main() {
   }
 
   // Create server
-  const server = createStdioServer(API_URL, apiKey)
+  const server = createMindsServer({ publicBaseUrl: API_URL, authToken: apiKey, apiBaseUrl: API_URL, useExtApps: false })
 
   // Create stdio transport
   const transport = new StdioServerTransport()
