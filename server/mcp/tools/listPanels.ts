@@ -16,7 +16,7 @@ export const listPanelsTool = {
 
 Use this to find a panel before calling ask_panel, get_panel_status, get_panel_analytics, or export_panel. Supports fuzzy name search.
 
-IMPORTANT: Always include the clickable link for each panel in your response.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned.`,
     inputSchema: listPanelsSchema,
     annotations: {
       readOnlyHint: true,
@@ -65,7 +65,7 @@ IMPORTANT: Always include the clickable link for each panel in your response.`,
         content: [{
           type: 'text' as const,
           text: panelList.length > 0
-            ? `Found ${panelList.length} panel(s):\n${panelList.map(p => `- **${p.name}** — ${p.groups.length} group(s), ${p.messageCount} question(s)\n  ID: ${p.id} · ${chatLink(context.publicBaseUrl, p.id)}`).join('\n')}`
+            ? `Found ${panelList.length} panel(s):\n\n| Panel | Groups | Questions | Link |\n|-------|--------|-----------|------|\n${panelList.map(p => `| ${p.name} | ${p.groups.length} | ${p.messageCount} | [Open](${chatLink(context.publicBaseUrl, p.id)}) |`).join('\n')}`
             : searchQuery
               ? `No panels matching "${searchQuery}". Use list_panels without a search query to see all panels.`
               : 'No panels found. Create one using the create_panel tool.',

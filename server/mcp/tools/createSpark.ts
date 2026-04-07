@@ -25,7 +25,9 @@ Training modes:
 - "clone": Model after a public figure's published ideas and expertise
 - "link": Train from a website or documentation URL
 
-After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.`,
+After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: createSparkSchema,
     annotations: {
       readOnlyHint: false,

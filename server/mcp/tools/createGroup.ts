@@ -21,7 +21,9 @@ export const createGroupTool = {
     title: 'Create a Group',
     description: `Create a named group of Minds. Groups organize Minds for panel research — e.g., "Marketing Experts" with 3 specialist Minds.
 
-Use list_minds to find Mind IDs, then group them here. Groups can be reused across multiple panels.`,
+Use list_minds to find Mind IDs, then group them here. Groups can be reused across multiple panels.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: createGroupSchema,
     annotations: {
       readOnlyHint: false,

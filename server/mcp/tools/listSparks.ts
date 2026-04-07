@@ -26,7 +26,7 @@ export const listSparksTool = {
 Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel.
 Supports fuzzy name search.
 
-IMPORTANT: Always include the clickable link for each Mind in your response. The tool output contains a link per Mind — pass these through to the user.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned — they contain encoded parameters that break if changed.`,
     inputSchema: listSparksSchema,
     annotations: {
       readOnlyHint: true,
@@ -73,7 +73,7 @@ IMPORTANT: Always include the clickable link for each Mind in your response. The
         content: [{
           type: 'text' as const,
           text: sparks.length > 0
-            ? `Found ${sparks.length} Mind(s):\n${sparkList.map((s) => `- **${s.name}** (${s.type || 'expert'}): ${s.description || 'No description'}\n  ID: ${s.id} · ${mindLink(context.publicBaseUrl, s.id)}`).join('\n')}\n\nOpen in Minds AI: ${workspaceLink(context.publicBaseUrl)}`
+            ? `Found ${sparks.length} Mind(s):\n\n| Mind | Discipline | Link |\n|------|-----------|------|\n${sparkList.map((s) => `| ${s.name} | ${s.discipline || '—'} | [Open](${mindLink(context.publicBaseUrl, s.id)}) |`).join('\n')}\n\nOpen workspace: ${workspaceLink(context.publicBaseUrl)}`
             : `No Minds found. Create one using create_mind.\n\nOpen Minds AI: ${workspaceLink(context.publicBaseUrl)}`,
         }],
         structuredContent: { sparks: sparkList },

@@ -18,7 +18,9 @@ export const getPanelAnalyticsTool = {
 - Categorical: distribution, dominant answer, cross-group divergence
 - Qualitative: theme clusters, shared themes, diversity index
 
-Use after running several questions with ask_panel to get a summary of findings. Supports ID or fuzzy name lookup.`,
+Use after running several questions with ask_panel to get a summary of findings. Supports ID or fuzzy name lookup.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: getPanelAnalyticsSchema,
     annotations: {
       readOnlyHint: true,

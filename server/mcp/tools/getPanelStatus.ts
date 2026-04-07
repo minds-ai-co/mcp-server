@@ -23,7 +23,9 @@ Returns:
 - Completed question results (aggregated)
 - PDF export status (if any)
 
-Call this after ask_panel to track progress, or after export_panel with format "pdf" to check if the download is ready.`,
+Call this after ask_panel to track progress, or after export_panel with format "pdf" to check if the download is ready.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: getPanelStatusSchema,
     annotations: {
       readOnlyHint: true,
