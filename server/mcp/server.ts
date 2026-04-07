@@ -141,6 +141,10 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
   let latestSparkId: string | null = null
   let latestSparkCreatedAt: number = 0
 
+  // Track the latest panel question for widget rendering
+  let latestPanelId: string | null = null
+  let latestOutputData: any = null
+
   // User discovery token state
   let userDiscoveryToken: string | null = null
   let authenticatedUserId: string | null = null
@@ -219,12 +223,19 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
       userDiscoveryToken,
       latestSparkId,
       latestSparkCreatedAt,
+      latestPanelId,
+      latestOutputData,
       ...(apiBaseUrl ? { apiBaseUrl } : {}),
       setLatestSpark: (sparkId: string) => {
         latestSparkId = sparkId
         latestSparkCreatedAt = Date.now()
         logger.debug('Stored latestSparkId for widget', { sparkId: latestSparkId.slice(0, 8) + '...' })
-      }
+      },
+      setLatestPanel: (panelId: string, outputData?: any) => {
+        latestPanelId = panelId
+        if (outputData) latestOutputData = outputData
+        logger.debug('Stored latestPanelId for widget', { panelId: panelId.slice(0, 8) + '...' })
+      },
     }
   }
 

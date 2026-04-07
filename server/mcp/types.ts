@@ -154,6 +154,9 @@ export interface McpServerContext {
   latestSparkId: string | null
   latestSparkCreatedAt: number
   setLatestSpark: (sparkId: string) => void
+  latestPanelId: string | null
+  latestOutputData: any
+  setLatestPanel: (panelId: string, outputData?: any) => void
   /** Optional API base URL override for stdio transport */
   apiBaseUrl?: string
 }

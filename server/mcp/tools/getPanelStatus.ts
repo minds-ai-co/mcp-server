@@ -126,6 +126,12 @@ Call this after ask_panel to track progress, or after export_panel with format "
       }
 
       if (recentCompleted.length > 0) {
+        // Update widget context with latest completed results
+        const latestCompleted = recentCompleted[recentCompleted.length - 1]
+        if (latestCompleted?.outputData && resolvedPanelId) {
+          context.setLatestPanel(resolvedPanelId, latestCompleted.outputData)
+        }
+
         lines.push('')
         lines.push('Recent results:')
         for (const q of recentCompleted) {

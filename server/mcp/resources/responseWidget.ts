@@ -14,13 +14,17 @@ export const responseWidgetResource = {
   },
 
   handler: async (context: McpServerContext & { panelId?: string; questionId?: string; outputData?: any }) => {
+    // Use explicit panelId/outputData if provided, otherwise fall back to latest from session
+    const panelId = context.panelId || context.latestPanelId
+    const outputData = context.outputData || context.latestOutputData
+
     const html = await getWidgetHtmlAsync('response', {
       type: 'response',
       apiBase: context.publicBaseUrl || 'https://getminds.ai',
       authToken: context.apiKey,
-      panelId: context.panelId,
+      panelId,
       questionId: context.questionId,
-      outputData: context.outputData,
+      outputData,
     })
 
     return {

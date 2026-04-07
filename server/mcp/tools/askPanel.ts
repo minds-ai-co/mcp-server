@@ -61,6 +61,9 @@ Requires an existing panel — use create_panel first, or list_panels to find on
       // Create tracking entry
       const pending = createPendingQuestion(resolvedPanelId, args.question)
 
+      // Store panel ID in session context so the widget resource can use it
+      context.setLatestPanel(resolvedPanelId)
+
       // Fire SSE request in the background — don't await
       const baseUrl = context.apiBaseUrl || API_BASE_URL
       processSSEInBackground(pending.questionId, `${baseUrl}/api/v1/panels/${resolvedPanelId}/ask`, {
