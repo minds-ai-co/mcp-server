@@ -73,7 +73,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         content: [{
           type: 'text' as const,
           text: sparks.length > 0
-            ? `Found ${sparks.length} Mind(s):\n${sparkList.map((s) => `- **${s.name}** (${s.type || 'expert'}): ${s.description || 'No description'}\n  Link: ${mindLink(context.publicBaseUrl, s.id)}`).join('\n')}\n\nOpen workspace: ${workspaceLink(context.publicBaseUrl)}`
+            ? `Found ${sparks.length} Mind(s):\n${sparkList.map((s) => `- ${s.name}${s.discipline ? ` · ${s.discipline}` : ''} — ${mindLink(context.publicBaseUrl, s.id)}`).join('\n')}\n\nOpen workspace: ${workspaceLink(context.publicBaseUrl)}`
             : `No Minds found. Create one using create_mind.\n\nOpen Minds AI: ${workspaceLink(context.publicBaseUrl)}`,
         }],
         structuredContent: { sparks: sparkList },
