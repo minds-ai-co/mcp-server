@@ -7,7 +7,7 @@ import { chatWithSparkSchema, type ChatWithSparkArgs, type McpServerContext, typ
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { mindLink } from '../utils/links'
-import { logger } from '../config'
+import { API_BASE_URL, logger } from '../config'
 
 /** Spark list item from API */
 interface SparkListItem {
@@ -158,6 +158,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           isProcessing: false,
           status: 'completed',
           progress: 100,
+          apiBase: context.publicBaseUrl || API_BASE_URL,
+          authToken: context.apiKey,
         },
       }
     } catch (error) {

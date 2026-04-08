@@ -10,6 +10,7 @@ import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { getPanelQuestions, type PendingQuestion } from '../utils/pendingQuestions'
 import { chatLink } from '../utils/links'
+import { API_BASE_URL } from '../config'
 
 export const getPanelStatusTool = {
   name: 'get_panel_status',
@@ -176,6 +177,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           recentResults: recentCompleted.map(formatPendingQuestion),
           failedQuestions: failed.map(formatPendingQuestion),
           exportStatus,
+          apiBase: context.publicBaseUrl || API_BASE_URL,
+          authToken: context.apiKey,
         },
       }
     } catch (error) {

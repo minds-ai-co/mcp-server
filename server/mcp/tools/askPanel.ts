@@ -83,6 +83,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           panelId: resolvedPanelId,
           question: args.question,
           status: 'processing',
+          apiBase: context.publicBaseUrl || API_BASE_URL,
+          authToken: context.apiKey,
         },
       }
     } catch (error) {
