@@ -45,7 +45,9 @@ function loadWidget(name: 'creation' | 'info' | 'response'): string {
 
 export function getWidgetHtml(name: 'creation' | 'info' | 'response', config: Record<string, any>): string {
   const html = loadWidget(name)
-  const configScript = `<script>window.__WIDGET_CONFIG__ = ${JSON.stringify(config)};</script>`
+  const apiBase = config.apiBase || 'https://getminds.ai'
+  const fontStyle = `<style>@font-face { font-family: 'Selecta'; src: url('${apiBase}/fonts/selecta-regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }</style>`
+  const configScript = `${fontStyle}<script>window.__WIDGET_CONFIG__ = ${JSON.stringify(config)};</script>`
   return html.replace('<!-- __WIDGET_CONFIG__ -->', configScript)
 }
 
