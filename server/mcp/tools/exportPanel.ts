@@ -26,6 +26,10 @@ Requires a panel with at least one answered question (use ask_panel first).
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: exportPanelSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
+    _meta: {
+      'openai/toolInvocation/invoking': 'Exporting panel report...',
+      'openai/toolInvocation/invoked': 'Report ready!',
+    },
   },
 
   handler: async (args: ExportPanelArgs, context: McpServerContext) => {

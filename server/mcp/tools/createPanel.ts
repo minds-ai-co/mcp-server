@@ -26,6 +26,10 @@ You can create new groups inline (provide groupConfigs with names and Mind IDs) 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: createPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, costHint: 'low' as const, timeoutHint: 15000, confirmationHint: false },
+    _meta: {
+      'openai/toolInvocation/invoking': 'Building your panel...',
+      'openai/toolInvocation/invoked': 'Panel created!',
+    },
   },
 
   handler: async (args: CreatePanelArgs, context: McpServerContext) => {
