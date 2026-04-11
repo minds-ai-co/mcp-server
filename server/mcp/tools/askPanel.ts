@@ -38,7 +38,7 @@ Requires an existing panel — use create_panel first, or list_panels to find on
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: askPanelSchema,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
     _meta: {
       ui: { resourceUri: 'ui://widget/response.html' },
       'openai/outputTemplate': 'ui://widget/response.html',

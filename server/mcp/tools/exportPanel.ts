@@ -25,7 +25,7 @@ Requires a panel with at least one answered question (use ask_panel first).
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
     inputSchema: exportPanelSchema,
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
   },
 
   handler: async (args: ExportPanelArgs, context: McpServerContext) => {

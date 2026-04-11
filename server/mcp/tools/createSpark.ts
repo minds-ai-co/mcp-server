@@ -33,7 +33,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
-      openWorldHint: false,
+      openWorldHint: true,
       /** Cost indication for this operation */
       costHint: 'high',
       /** Expected execution time in milliseconds */
