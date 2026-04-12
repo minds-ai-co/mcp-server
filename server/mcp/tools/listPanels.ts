@@ -22,7 +22,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
-      openWorldHint: false,
+      openWorldHint: true,
       costHint: 'low' as const,
       timeoutHint: 10000,
       confirmationHint: false,

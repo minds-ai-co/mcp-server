@@ -7,7 +7,7 @@
  * - Chat mode: Shows chat interface with an existing spark and optional initial message
  */
 
-import { randomBytes, createHash } from 'crypto'
+import { randomBytes } from 'crypto'
 import { loadSparkWidget } from './widgetLoader'
 import { latestSparkCache, pendingWidgetTokens, cleanupCaches } from '../utils/cache'
 import { CACHE_TTL, logger } from '../config'
@@ -17,12 +17,13 @@ import { CACHE_TTL, logger } from '../config'
  * The CSP must include whatever domain the widget will call for API requests.
  */
 function buildWidgetMeta(publicBaseUrl: string) {
-  // Extract host from publicBaseUrl for CSP directives
-  let cspHost = '*'
+  // Derive a stable HTTPS origin for _meta.ui.domain. Required for ChatGPT app
+  // submission; must be unique per app. See Apps SDK reference.
+  let widgetOrigin = 'https://getminds.ai'
   try {
-    const url = new URL(publicBaseUrl)
-    cspHost = url.host
-  } catch { /* fallback to wildcard */ }
+    const u = new URL(publicBaseUrl)
+    widgetOrigin = `${u.protocol}//${u.host}`
+  } catch { /* fallback to getminds.ai default */ }
 
   // Raw CSP string — ChatGPT enforces this on the widget iframe
   const cspString = [
@@ -55,14 +56,14 @@ function buildWidgetMeta(publicBaseUrl: string) {
           'https://fonts.gstatic.com',
         ],
       },
-      domain: createHash('sha256').update(publicBaseUrl.replace(/\/$/, '') + '/mcp').digest('hex').slice(0, 32) + '.claudemcpcontent.com',
+      domain: widgetOrigin,
       prefersBorder: true,
       height: 600,
     },
     // OpenAI Apps SDK raw CSP string (ChatGPT reads this)
     'openai/widgetPrefersBorder': true,
     'openai/widgetHeight': 600,
-    'openai/widgetDomain': cspHost,
+    'openai/widgetDomain': widgetOrigin,
     'openai/widgetCsp': cspString,
   }
 }

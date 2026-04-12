@@ -32,7 +32,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
-      openWorldHint: false,
+      openWorldHint: true,
       costHint: 'low' as const,
       timeoutHint: 15000,
       confirmationHint: false,
