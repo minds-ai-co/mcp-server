@@ -124,7 +124,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
             lines.push(`  Shared across groups: ${ql.sharedThemes.join(', ')}`)
           }
           for (const gs of ql.groupStats) {
-            lines.push(`  ${gs.group}: dominant="${gs.dominant}", diversity=${(gs.diversityIndex * 100).toFixed(0)}%`)
+            lines.push(`  ${gs.group}: dominant="${gs.dominant}", diversity=${(((gs as any).diversityIndex ?? 0) * 100).toFixed(0)}%`)
           }
         }
         lines.push('')
