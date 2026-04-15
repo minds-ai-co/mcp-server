@@ -158,10 +158,19 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
         }
       }
 
+      // The server normally emits a pre-signed Supabase URL here; if signing
+      // failed and it fell back to the proxy path, make it absolute so the
+      // LLM client receives a clickable link.
+      const absoluteDownloadUrl = exportStatus?.downloadUrl
+        ? (exportStatus.downloadUrl.startsWith('http')
+          ? exportStatus.downloadUrl
+          : `${context.publicBaseUrl}${exportStatus.downloadUrl}`)
+        : undefined
+
       if (exportStatus) {
         lines.push('', `Export: ${exportStatus.status || 'none'}`)
         if (exportStatus.progress) lines.push(`  Progress: ${exportStatus.progress}%`)
-        if (exportStatus.downloadUrl) lines.push(`  Download: ${exportStatus.downloadUrl}`)
+        if (absoluteDownloadUrl) lines.push(`  Download: ${absoluteDownloadUrl}`)
       }
 
       return {
@@ -176,7 +185,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           activeQuestions: activeQuestions.map(formatPendingQuestion),
           recentResults: recentCompleted.map(formatPendingQuestion),
           failedQuestions: failed.map(formatPendingQuestion),
-          exportStatus,
+          exportStatus: exportStatus ? { ...exportStatus, downloadUrl: absoluteDownloadUrl } : undefined,
           apiBase: context.publicBaseUrl || API_BASE_URL,
           authToken: context.apiKey,
         },
