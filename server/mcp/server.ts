@@ -116,6 +116,16 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
     useExtApps = true,
   } = options
 
+  // `minds-ai` is the SDK server identity returned by JSON-RPC `initialize`
+  // on the main Nuxt app at getminds.ai/mcp. There are THREE distinct MCP
+  // server identities in this codebase:
+  //   1. `minds-ai`        — this one, SDK-driven (what Claude Desktop /
+  //                          ChatGPT / Cursor see after `initialize`)
+  //   2. `mindsai-mcp`     — the GET /mcp health JSON in server/routes/mcp.ts
+  //   3. `mindsai-personas` — the standalone marketplace build in
+  //                          server/mcp/main.ts, synced to the separate
+  //                          mcp-server repo for Dedalus Labs
+  // Do not unify the three names without updating every deployment target.
   const serverOptions: Record<string, unknown> = {
     name: 'minds-ai',
     version: '2.0.0',
