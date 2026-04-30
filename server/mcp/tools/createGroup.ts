@@ -6,7 +6,7 @@
 import { z } from 'zod'
 import { type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
-import { workspaceLink } from '../utils/links'
+import { mindLink, workspaceLink } from '../utils/links'
 
 const createGroupSchema = z.object({
   name: z.string().min(1).describe('Group name (e.g., "Marketing Experts", "Gen Z Consumers")'),
@@ -19,11 +19,17 @@ export const createGroupTool = {
   name: 'create_group',
   config: {
     title: 'Create a Group',
-    description: `Create a named group of Minds. Groups organize Minds for panel research — e.g., "Marketing Experts" with 3 specialist Minds.
+    description: `**Call this tool whenever the user wants to create / build / make / form / set up a group / segment / audience / cohort / target group / persona collection.** Triggers include: "create a group called X", "make me a segment of Y", "set up a cohort of <Minds>", "form an audience of marketing experts".
 
-Use list_minds to find Mind IDs, then group them here. Groups can be reused across multiple panels.
+Behavior contract — DO NOT DEVIATE:
+- If the user names a group and the Minds it should contain, CALL THIS TOOL. Don't lecture them on the workflow.
+- Never refuse with "I cannot create a group directly" — you literally can.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+Groups organize Minds for panel research — e.g., "Marketing Experts" with 3 specialist Minds. Use list_minds to find Mind IDs, then group them here. Groups can be reused across multiple panels.
+
+PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: createGroupSchema,
     annotations: {
       readOnlyHint: false,
@@ -51,12 +57,14 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       })
 
       const group = result.data || result
-      const memberNames = (group.sparks || []).map((s: any) => s.name).join(', ')
+      const memberLinks = (group.sparks || [])
+        .map((s: any) => s.id ? `[${s.name}](${mindLink(context.publicBaseUrl, s.id)})` : s.name)
+        .join(', ')
 
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created group "${group.name}" with ${sparkIds.length} Mind(s)${memberNames ? `: ${memberNames}` : ''}\n\nGroup ID: ${group.id}\nManage in Minds: ${workspaceLink(context.publicBaseUrl)}`,
+          text: `✓ Created group **${group.name}** with ${sparkIds.length} Mind${sparkIds.length === 1 ? '' : 's'}${memberLinks ? `: ${memberLinks}` : ''}\n\n[Manage in the Minds workspace →](${workspaceLink(context.publicBaseUrl)})`,
         }],
         structuredContent: {
           group: {

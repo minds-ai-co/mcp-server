@@ -154,7 +154,13 @@ class AuditLogger {
   }
 
   /**
-   * Write a single event to the log
+   * Write a single event to the log.
+   *
+   * Info-severity audits (auth.attempt, tool.invoke, tool.success,
+   * resource.access) are silenced by default — they create a wall of
+   * noise during normal operation. Set `MCP_AUDIT_VERBOSE=1` to bring
+   * them back when actively debugging tool flow. Warn/error/critical
+   * always pass through.
    */
   private writeEvent(event: AuditEvent): void {
     const logData = maskSensitiveData(event as unknown as Record<string, unknown>)
@@ -179,7 +185,9 @@ class AuditLogger {
         logger.warn(`[AUDIT] ${logLine}`)
         break
       default:
-        logger.info(`[AUDIT] ${logLine}`)
+        if (process.env.MCP_AUDIT_VERBOSE === '1') {
+          logger.info(`[AUDIT] ${logLine}`)
+        }
     }
   }
 

@@ -17,13 +17,22 @@ export const createPanelTool = {
   name: 'create_panel',
   config: {
     title: 'Create a Panel',
-    description: `Create a market research panel. A panel contains one or more groups of Minds that are surveyed together for comparative analysis.
+    description: `**Call this tool whenever the user wants to start, set up, build, launch, or create a panel / study / survey / research project / focus group / qual study.** Triggers include: "start a study", "set up a survey", "create a focus group", "launch research on X", "build me a panel", "I want to ask a panel about Y" (when no panel matches yet).
+
+Behavior contract — DO NOT DEVIATE:
+- If the user describes a research goal and a panel doesn't exist yet, CALL THIS TOOL. Don't lecture them on the workflow first.
+- Only ask for clarification if you're missing something concrete (a name, or which Minds/groups go in).
+- Never refuse with "I cannot create a panel directly" — you literally can.
+
+A panel contains one or more groups of Minds surveyed together for comparative analysis.
 
 Workflow: first create Minds (create_mind), then group them here into a panel, then survey with ask_panel.
 
 You can create new groups inline (provide groupConfigs with names and Mind IDs) or attach existing groups by ID (use list_groups to find them). Use list_minds to get Mind IDs.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — preserve the panel link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: createPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, costHint: 'low' as const, timeoutHint: 15000, confirmationHint: false },
     _meta: {
@@ -75,9 +84,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       const panel = result.data || result
       const groupSummary = panel.groups?.map((g: any) => `${g.name} (${g.sparks?.length || 0} sparks)`).join(', ') || 'no groups'
 
-      let responseText = `✓ Created panel "${panel.name}" with ${panel.groups?.length || 0} groups: ${groupSummary}\n\nPanel ID: ${panel.id}\nOpen in Minds: ${chatLink(context.publicBaseUrl, panel.id)}`
+      let responseText = `✓ Created panel **[${panel.name}](${chatLink(context.publicBaseUrl, panel.id)})** with ${panel.groups?.length || 0} group${(panel.groups?.length || 0) === 1 ? '' : 's'}: ${groupSummary}\n\n[Open this panel in Minds →](${chatLink(context.publicBaseUrl, panel.id)})`
       if (failedGroups.length > 0) {
-        responseText += `\n\nWarning: ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}`
+        responseText += `\n\n⚠️ ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}`
       }
 
       return { content: [{ type: 'text' as const, text: responseText }], structuredContent: { panelId: panel.id, name: panel.name, groups: panel.groups, failedGroups } }

@@ -18,7 +18,12 @@ export const createSparkTool = {
   name: 'create_mind',
   config: {
     title: 'Create a Mind',
-    description: `Create a new Mind — a synthetic expert, consumer persona, or digital twin for market research.
+    description: `**Call this tool whenever the user wants to create / build / make / spin up / clone a Mind / persona / expert / digital twin / character / respondent / agent.** Triggers include: "create a Mind for X", "make me a digital twin of <person>", "build an SEO expert", "spin up a persona who knows about Y", "clone <public figure>", "train a Mind from this URL".
+
+Behavior contract — DO NOT DEVIATE:
+- If the user describes who/what they want, CALL THIS TOOL. Don't make them fill out a form first.
+- Pick the mode from the user's wording: a name/topic → keywords; a person to clone → clone with personaContext; a URL → link with contextLink.
+- Never refuse with "I cannot create a persona directly" — you literally can.
 
 Training modes:
 - "keywords": Build a domain expert from topics (e.g., ["SEO", "brand strategy"])
@@ -27,7 +32,9 @@ Training modes:
 
 After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — preserve the Mind link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: createSparkSchema,
     annotations: {
       readOnlyHint: false,
@@ -317,8 +324,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           content: [{
             type: 'text' as const,
             text: isComplete
-              ? `✓ Created Spark "${spark.name}" (ID: ${spark.id}) - Ready to chat!`
-              : `✓ Creating Spark "${spark.name}" (ID: ${spark.id}) - training in progress (${pollResult.progress || 5}%)`,
+              ? `✓ Created Mind **[${spark.name}](${mindLink(publicBaseUrl, spark.id)})** — ready to chat!\n\n[Open this Mind in the workspace →](${mindLink(publicBaseUrl, spark.id)})`
+              : `✓ Creating Mind **[${spark.name}](${mindLink(publicBaseUrl, spark.id)})** — training in progress (${pollResult.progress || 5}%). Use get_mind_status to track.\n\n[Open this Mind in the workspace →](${mindLink(publicBaseUrl, spark.id)})`,
           }],
           structuredContent: {
             spark: {
@@ -368,7 +375,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created Mind "${spark.name}"${isProcessing ? ' (training in progress — use get_mind_status to check)' : ''}\n\nOpen in Minds: ${mindLink(context.publicBaseUrl, spark.id)}`,
+          text: `✓ Created Mind **[${spark.name}](${mindLink(context.publicBaseUrl, spark.id)})**${isProcessing ? ' — training in progress (use get_mind_status to check)' : ''}\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, spark.id)})`,
         }],
         structuredContent: {
           spark: {

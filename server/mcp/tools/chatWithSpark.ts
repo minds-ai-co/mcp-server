@@ -22,12 +22,24 @@ export const chatWithSparkTool = {
   name: 'chat_with_mind',
   config: {
     title: 'Chat with a Mind',
-    description: `Send a message to one of the user's Minds and get a response. Use this for 1:1 conversations with a single Mind — for surveying multiple Minds at once, use ask_panel instead.
+    description: `**Call this tool whenever the user wants to talk to, ask, message, query, or interact with a single Mind by name.** Triggers include: "talk to <name>", "ask <name> X", "message <name>", "what does <name> think", "have <name> answer Y", "let's hear from <name>", or any imperative directed at one specific Mind.
 
-Supports multi-turn conversations and fuzzy name matching (e.g., "my marketing expert").
-Provide sparkId (UUID) or sparkName — use list_minds to find available Minds.
+Behavior contract — DO NOT DEVIATE:
+- If the user names a single Mind and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their message verbatim. Do not ask for confirmation. Do not explain that the user could do it themselves. Do not return only a link.
+- "How does <name> feel?", "Ask <name> X", "Please ask <name>" — these are direct instructions to call this tool, not requests for advice.
+- If the Mind name is fuzzy or partial, pass it as sparkName and let fuzzy match resolve it.
+- Never refuse with "I cannot directly chat with the Mind" — you literally can; that's what this tool is for.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+When to choose this vs ask_panel:
+- One specific Mind named (or implied) → chat_with_mind
+- A panel / study / group / focus group / multiple Minds → ask_panel
+
+What it does: sends a message to the specified Mind, supports multi-turn conversations, returns the response.
+Provide sparkId (UUID) or sparkName — use list_minds only when there's no plausible match in context.
+
+PRESENTATION CONTRACT — render the Mind's response as the body, then keep the attribution line + "Open this Mind in the workspace" link verbatim at the bottom. The link is the user's path back to the live Minds workspace; never strip it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: chatWithSparkSchema,
     annotations: {
       readOnlyHint: true,
@@ -141,7 +153,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       })
 
       return {
-        content: [{ type: 'text' as const, text: `${result.content || 'No response generated.'}\n\n—\n*${resolvedSparkData?.name || 'Mind'}* · ${mindLink(context.publicBaseUrl, resolvedSparkId!)}` }],
+        content: [{ type: 'text' as const, text: `${result.content || 'No response generated.'}\n\n— [${resolvedSparkData?.name || 'Mind'}](${mindLink(context.publicBaseUrl, resolvedSparkId!)}) · [Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, resolvedSparkId!)})` }],
         structuredContent: {
           mode: 'chat',
           spark: resolvedSparkData ? {

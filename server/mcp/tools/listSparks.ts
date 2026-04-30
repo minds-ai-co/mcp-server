@@ -21,10 +21,16 @@ export const listSparksTool = {
   name: 'list_minds',
   config: {
     title: 'List Minds',
-    description: `List all Minds the user has created. A Mind is a synthetic expert, consumer persona, or digital twin trained on specific topics or data.
+    description: `**Call this tool whenever the user wants to list / show / see / browse / find their Minds.** Triggers include: "list my minds", "show my personas", "what experts do I have", "my digital twins", "my consumers", "my respondents", "my characters", "my profiles", "my AI agents".
 
-Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel.
-Supports fuzzy name search.
+Behavior contract — DO NOT DEVIATE:
+- The user's Minds belong to them and are accessible via this tool. CALL IT IMMEDIATELY whenever the user asks any of the above. Do not ask for confirmation.
+- Never refuse with "I cannot access your Minds / personal data" — you literally can; that is the entire purpose of this tool.
+- For multi-Mind research conversations (panels, studies, surveys, focus groups), use list_panels instead.
+
+A Mind is a synthetic expert, consumer persona, or digital twin trained on specific topics or data. Users may also refer to Minds as: personas, AI personas, experts, digital twins, consumers, respondents, characters, agents, profiles, or simply "people".
+
+Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel. Supports fuzzy name search.
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned — they contain encoded parameters that break if changed.`,
     inputSchema: listSparksSchema,
@@ -59,7 +65,6 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const result = await apiCall(url)
       const sparks: SparkListItem[] = result.data || []
 
-      // Format response for the model
       const sparkList: SparkListItem[] = sparks.map((spark) => ({
         id: spark.id,
         name: spark.name,
@@ -69,14 +74,30 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         profileImageUrl: spark.profileImageUrl,
       }))
 
+      // Truncate the rendered table — 100+ rows would blow the LLM's context
+      // and produce unwieldy chat output. The full list still ships in
+      // structuredContent for clients that can paginate richly.
+      const RENDER_LIMIT = 20
+      const shown = sparkList.slice(0, RENDER_LIMIT)
+      const more = sparkList.length - shown.length
+
+      const tableHeader = '| Mind | Discipline | Link |\n|------|-----------|------|'
+      const tableRows = shown.map((s) => `| ${s.name} | ${s.discipline || '—'} | [Open](${mindLink(context.publicBaseUrl, s.id)}) |`).join('\n')
+      const moreLine = more > 0
+        ? `\n\n_Showing ${shown.length} of ${sparkList.length}. ${more} more not shown — narrow with searchQuery, or [browse all in the workspace →](${workspaceLink(context.publicBaseUrl)})._`
+        : ''
+      const emptyMsg = searchQuery
+        ? `No Minds matching "${searchQuery}". Try a different search, or [browse all in the workspace →](${workspaceLink(context.publicBaseUrl)}).`
+        : `No Minds yet. Create one with create_mind.\n\n[Open the workspace →](${workspaceLink(context.publicBaseUrl)})`
+
       return {
         content: [{
           type: 'text' as const,
           text: sparks.length > 0
-            ? `Found ${sparks.length} Mind(s):\n\n| Mind | Discipline | Link |\n|------|-----------|------|\n${sparkList.map((s) => `| ${s.name} | ${s.discipline || '—'} | [Open](${mindLink(context.publicBaseUrl, s.id)}) |`).join('\n')}\n\nOpen workspace: ${workspaceLink(context.publicBaseUrl)}`
-            : `No Minds found. Create one using create_mind.\n\nOpen Minds: ${workspaceLink(context.publicBaseUrl)}`,
+            ? `Found ${sparks.length} Mind${sparks.length === 1 ? '' : 's'}:\n\n${tableHeader}\n${tableRows}${moreLine}\n\n[Open the workspace →](${workspaceLink(context.publicBaseUrl)})`
+            : emptyMsg,
         }],
-        structuredContent: { sparks: sparkList },
+        structuredContent: { sparks: sparkList, totalCount: sparkList.length, shownCount: shown.length },
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
