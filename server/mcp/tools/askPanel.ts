@@ -76,7 +76,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       return {
         content: [{
           type: 'text' as const,
-          text: `Survey started (question: "${args.question.slice(0, 80)}${args.question.length > 80 ? '...' : ''}"). Use get_panel_status to track progress and get results.\n\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, resolvedPanelId)}`,
+          text: `Survey started (question: "${args.question.slice(0, 80)}${args.question.length > 80 ? '...' : ''}"). Use get_panel_status to track progress and get results.\n\nOpen in Minds: ${chatLink(context.publicBaseUrl, resolvedPanelId)}`,
         }],
         structuredContent: {
           questionId: pending.questionId,

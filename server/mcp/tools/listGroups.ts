@@ -63,7 +63,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             ? `Found ${groupList.length} group(s):\n${groupList.map(g => `- **${g.name}** — ${g.sparkCount} Mind(s): ${g.sparks.map((s: any) => s.name).join(', ') || 'empty'}\n  ID: ${g.id}`).join('\n')}\n\nManage groups: ${workspaceLink(context.publicBaseUrl)}`
             : searchQuery
               ? `No groups matching "${searchQuery}".`
-              : `No groups found. Create one with create_group.\n\nOpen Minds AI: ${workspaceLink(context.publicBaseUrl)}`,
+              : `No groups found. Create one with create_group.\n\nOpen Minds: ${workspaceLink(context.publicBaseUrl)}`,
         }],
         structuredContent: { groups: groupList },
       }

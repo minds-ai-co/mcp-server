@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Minds AI MCP Server - stdio transport
+ * Minds MCP Server - stdio transport
  *
  * For use with Claude Desktop, Cursor, and other MCP clients that use stdio transport.
  *
  * Environment variables:
- *   MINDSAI_API_KEY - Your Minds AI API key (required)
+ *   MINDSAI_API_KEY - Your Minds API key (required)
  *
  * Usage with Claude Desktop (claude_desktop_config.json):
  * {
@@ -49,7 +49,7 @@ async function main() {
   await server.connect(transport)
 
   // Log to stderr (stdout is reserved for MCP protocol)
-  console.error('[MCP] Minds AI server started')
+  console.error('[MCP] Minds server started')
   console.error('[MCP] Waiting for requests...')
 }
 

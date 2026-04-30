@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Minds AI MCP Server - HTTP Entry Point
+ * Minds MCP Server - HTTP Entry Point
  *
  * For cloud deployment on Dedalus Labs.
  * Session-based HTTP transport - maintains server instances across requests.
@@ -177,7 +177,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
 const server = createServer(requestHandler)
 
 server.listen(PORT, HOST, () => {
-  console.log(`[MCP] Minds AI server listening on http://${HOST}:${PORT}`)
+  console.log(`[MCP] Minds server listening on http://${HOST}:${PORT}`)
   console.log(`[MCP] MCP endpoint: http://${HOST}:${PORT}/mcp`)
   console.log(`[MCP] Health check: http://${HOST}:${PORT}/health`)
 })

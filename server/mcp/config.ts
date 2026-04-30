@@ -27,7 +27,7 @@ export const CORS_CONFIG = {
     'https://chatgpt.com',
     // Claude
     'https://claude.ai',
-    // Minds AI
+    // Minds
     'https://art-of-x.com',
     'https://staging.art-of-x.com',
     'https://getminds.ai',

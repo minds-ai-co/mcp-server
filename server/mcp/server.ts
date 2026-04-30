@@ -1,5 +1,5 @@
 /**
- * Minds AI MCP Server
+ * Minds MCP Server
  * Main server creation and configuration
  *
  * Create and chat with AI personas, digital twins, and expert advisors.
@@ -106,7 +106,7 @@ const extAppToolNames = new Set([
 ])
 
 /**
- * Create and configure the Minds AI MCP server
+ * Create and configure the Minds MCP server
  */
 export function createMindsServer(options: CreateMindsServerOptions = {}) {
   const {
@@ -129,7 +129,7 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
   const serverOptions: Record<string, unknown> = {
     name: 'minds-ai',
     version: '2.0.0',
-    description: 'Minds AI — synthetic market research. Create Minds (AI experts, consumer personas, digital twins), organize them into groups, run panel surveys, analyze results, and export branded reports.',
+    description: 'Minds — synthetic market research. Create Minds (AI experts, consumer personas, digital twins), organize them into groups, run panel surveys, analyze results, and export branded reports.',
   }
 
   // Only include OAuth discovery metadata for ext-apps (HTTP transport)

@@ -211,7 +211,7 @@ window.__API_BASE__ = "${publicBaseUrl}";
           {
             uri: 'ui://widget/spark.html',
             mimeType: 'text/html;profile=mcp-app',
-            text: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Minds AI - Spark</title></head><body style="font-family:system-ui;padding:20px;background:#0a0a0b;color:#fff;"><p>Minds AI Spark Widget</p></body></html>`,
+            text: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Minds - Spark</title></head><body style="font-family:system-ui;padding:20px;background:#0a0a0b;color:#fff;"><p>Minds Spark Widget</p></body></html>`,
             _meta: meta,
           },
         ],

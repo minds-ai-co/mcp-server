@@ -75,7 +75,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       const panel = result.data || result
       const groupSummary = panel.groups?.map((g: any) => `${g.name} (${g.sparks?.length || 0} sparks)`).join(', ') || 'no groups'
 
-      let responseText = `✓ Created panel "${panel.name}" with ${panel.groups?.length || 0} groups: ${groupSummary}\n\nPanel ID: ${panel.id}\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, panel.id)}`
+      let responseText = `✓ Created panel "${panel.name}" with ${panel.groups?.length || 0} groups: ${groupSummary}\n\nPanel ID: ${panel.id}\nOpen in Minds: ${chatLink(context.publicBaseUrl, panel.id)}`
       if (failedGroups.length > 0) {
         responseText += `\n\nWarning: ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}`
       }

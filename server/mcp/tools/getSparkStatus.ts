@@ -59,8 +59,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
         content: [{
           type: 'text' as const,
           text: isReady
-            ? `✓ Mind is ready to chat!\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`
-            : `Mind status: ${statusResult.status} (${statusResult.progress}%) — ${statusResult.message}\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`,
+            ? `✓ Mind is ready to chat!\n\nOpen in Minds: ${mindLink(context.publicBaseUrl, sparkId)}`
+            : `Mind status: ${statusResult.status} (${statusResult.progress}%) — ${statusResult.message}\n\nOpen in Minds: ${mindLink(context.publicBaseUrl, sparkId)}`,
         }],
         structuredContent: {
           spark: spark ? {

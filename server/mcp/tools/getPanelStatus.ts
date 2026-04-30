@@ -174,7 +174,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       }
 
       return {
-        content: [{ type: 'text' as const, text: lines.join('\n') + `\n\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+        content: [{ type: 'text' as const, text: lines.join('\n') + `\n\nOpen in Minds: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
         structuredContent: {
           panelId: resolvedPanelId,
           name: data.name,

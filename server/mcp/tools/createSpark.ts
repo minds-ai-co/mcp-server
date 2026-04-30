@@ -368,7 +368,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created Mind "${spark.name}"${isProcessing ? ' (training in progress — use get_mind_status to check)' : ''}\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, spark.id)}`,
+          text: `✓ Created Mind "${spark.name}"${isProcessing ? ' (training in progress — use get_mind_status to check)' : ''}\n\nOpen in Minds: ${mindLink(context.publicBaseUrl, spark.id)}`,
         }],
         structuredContent: {
           spark: {

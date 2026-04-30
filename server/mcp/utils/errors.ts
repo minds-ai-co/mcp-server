@@ -150,7 +150,7 @@ export function authenticationRequired(oauthUrl?: string): McpError {
     {
       type: 'AUTHENTICATION_REQUIRED',
       ...(oauthUrl && { oauth: oauthUrl }),
-      instructions: 'Connect your Minds AI account via OAuth or provide an API key.',
+      instructions: 'Connect your Minds account via OAuth or provide an API key.',
     }
   )
 }

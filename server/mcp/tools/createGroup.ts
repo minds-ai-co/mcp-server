@@ -56,7 +56,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created group "${group.name}" with ${sparkIds.length} Mind(s)${memberNames ? `: ${memberNames}` : ''}\n\nGroup ID: ${group.id}\nManage in Minds AI: ${workspaceLink(context.publicBaseUrl)}`,
+          text: `✓ Created group "${group.name}" with ${sparkIds.length} Mind(s)${memberNames ? `: ${memberNames}` : ''}\n\nGroup ID: ${group.id}\nManage in Minds: ${workspaceLink(context.publicBaseUrl)}`,
         }],
         structuredContent: {
           group: {

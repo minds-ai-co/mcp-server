@@ -1,7 +1,7 @@
 /**
  * Platform link helpers for MCP tool text responses.
  * Non-widget clients (Langdock, Windsurf, etc.) get clickable links
- * so users can open results in the Minds AI webapp.
+ * so users can open results in the Minds webapp.
  */
 
 /** Link to a Mind's detail page (opens slide-in panel in workspace) */

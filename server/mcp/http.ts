@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Minds AI MCP Server - HTTP transport
+ * Minds MCP Server - HTTP transport
  *
  * For cloud deployment on Dedalus Labs and other HTTP-based MCP hosts.
  *
@@ -74,6 +74,6 @@ const httpServer = createServer(async (req, res) => {
 })
 
 httpServer.listen(PORT, () => {
-  console.log(`[MCP] Minds AI server listening on port ${PORT}`)
+  console.log(`[MCP] Minds server listening on port ${PORT}`)
   console.log(`[MCP] MCP endpoint: http://localhost:${PORT}/mcp`)
 })

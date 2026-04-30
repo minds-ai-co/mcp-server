@@ -1,5 +1,5 @@
 /**
- * Minds AI MCP Server - Entry Point
+ * Minds MCP Server - Entry Point
  *
  * This is the main entry point for the MCP server module.
  * It re-exports the server factory and utilities needed by other parts of the application.
