@@ -35,6 +35,7 @@ import { listPanelsTool } from './tools/listPanels'
 import { getPanelStatusTool } from './tools/getPanelStatus'
 import { listGroupsTool } from './tools/listGroups'
 import { createGroupTool } from './tools/createGroup'
+import { createGroupFromBriefTool } from './tools/createGroupFromBrief'
 import { getPanelAnalyticsTool } from './tools/getPanelAnalytics'
 
 // Resources
@@ -91,6 +92,7 @@ const allTools = [
   { tool: getPanelStatusTool, needsToken: false },
   { tool: listGroupsTool, needsToken: false },
   { tool: createGroupTool, needsToken: true },
+  { tool: createGroupFromBriefTool, needsToken: true },
   { tool: getPanelAnalyticsTool, needsToken: false },
 ]
 
