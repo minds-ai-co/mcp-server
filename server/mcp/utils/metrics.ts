@@ -187,7 +187,7 @@ class MetricsStore {
    * Convert labels object to string key
    */
   private labelsToKey(labels: Record<string, string>): string {
-    return Object.entries(labels)
+    return (Object.entries(labels) as Array<[string, string]>)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}="${v}"`)
       .join(',')

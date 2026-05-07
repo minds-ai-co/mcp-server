@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Minds AI MCP Server - HTTP Entry Point
+ * Minds MCP Server - HTTP Entry Point
  *
  * For cloud deployment on Dedalus Labs.
  * Session-based HTTP transport - maintains server instances across requests.
@@ -143,7 +143,18 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
       await handleMcpRequest(req, res)
       return
     }
-    // GET returns server info
+    // GET returns server info.
+    //
+    // `mindsai-personas` is the customer-facing brand on the Dedalus Labs
+    // marketplace listing (see ../../mcp-server/mcp.json). This file is the
+    // entrypoint for the standalone MCP server that gets synced to the
+    // separate minds-ai-co/mcp-server repo by
+    // .github/workflows/sync-mcp-server.yml and shipped as a Docker image to
+    // the marketplace. THREE MCP server identities exist in this codebase:
+    //   1. `minds-ai`        — SDK server in server/mcp/server.ts (main app)
+    //   2. `mindsai-mcp`     — GET /mcp health JSON in server/routes/mcp.ts
+    //   3. `mindsai-personas` — this one, the marketplace build
+    // Renaming this requires updating the marketplace listing on Dedalus.
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
@@ -166,7 +177,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
 const server = createServer(requestHandler)
 
 server.listen(PORT, HOST, () => {
-  console.log(`[MCP] Minds AI server listening on http://${HOST}:${PORT}`)
+  console.log(`[MCP] Minds server listening on http://${HOST}:${PORT}`)
   console.log(`[MCP] MCP endpoint: http://${HOST}:${PORT}/mcp`)
   console.log(`[MCP] Health check: http://${HOST}:${PORT}/health`)
 })

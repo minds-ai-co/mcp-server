@@ -13,14 +13,18 @@ export const getPanelAnalyticsTool = {
   name: 'get_panel_analytics',
   config: {
     title: 'Get Panel Analytics',
-    description: `Compute statistics across all questions asked in a panel. Returns quantitative insights:
+    description: `**Call this tool whenever the user wants a summary, statistics, analytics, insights, or "the big picture" across a panel's questions.** Triggers include: "summarize my panel", "what did the panel find", "give me the analytics for <panel>", "key insights from <panel>", "summary of the <study/survey> results".
+
+Returns quantitative insights:
 - Scale: mean, median, sigma, consensus score, group ranking
 - Categorical: distribution, dominant answer, cross-group divergence
 - Qualitative: theme clusters, shared themes, diversity index
 
 Use after running several questions with ask_panel to get a summary of findings. Supports ID or fuzzy name lookup.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — when no rich widget is rendered (OWUI, Langdock, Windsurf, plain ChatGPT), preserve the markdown structure verbatim: panel header with link, one section per question, **bold group name** with the aggregated value (mean for scale, dominant for categorical, theme list for qualitative). The format mirrors the PanelAnswerBlock widget so users get the same shape regardless of client.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show the panel link — it is the user's path back into the Minds platform.`,
     inputSchema: getPanelAnalyticsSchema,
     annotations: {
       readOnlyHint: true,
@@ -87,58 +91,57 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       // Compute statistics using the existing engine
       const stats: PanelStatistics = computePanelStatistics(data.name, groups, questions)
 
-      // Format readable summary
+      // Render in PanelAnswerBlock-shape: per-question section, **bold group**
+      // with aggregated value, panel link header — same layout as get_panel_status
+      // so non-widget clients see consistent output across panel tools.
+      const panelHref = chatLink(context.publicBaseUrl, resolvedPanelId)
       const lines: string[] = [
-        `Analytics for "${stats.panelName}"`,
-        `Groups: ${stats.totalGroups} | Knowledge bases: ${stats.totalSparks} | Questions: ${stats.totalQuestions} | Data points: ${stats.totalDataPoints}`,
-        '',
+        `## [${stats.panelName}](${panelHref}) — analytics`,
+        `Groups: ${stats.totalGroups} · Minds: ${stats.totalSparks} · Questions: ${stats.totalQuestions} · Data points: ${stats.totalDataPoints}`,
       ]
 
       for (const q of stats.questions) {
-        lines.push(`--- Q${q.index}: ${q.title} (${q.type}) ---`)
+        lines.push('', `### ${q.title} _(${q.type})_`)
 
         if (q.stats.scale) {
           const s = q.stats.scale
-          lines.push(`  Overall: mean=${s.overallMean.toFixed(2)}, median=${s.overallMedian.toFixed(2)}, σ=${s.overallSigma.toFixed(2)}, range=[${s.range[0]}, ${s.range[1]}]`)
+          lines.push(`Overall: **mean ${s.overallMean.toFixed(2)}** · median ${s.overallMedian.toFixed(2)} · σ ${s.overallSigma.toFixed(2)} · range [${s.range[0]}, ${s.range[1]}]`)
           if (s.groupRanking.length > 1) {
-            lines.push(`  Group ranking (by mean): ${s.groupRanking.join(' > ')}`)
+            lines.push(`Group ranking (by mean): ${s.groupRanking.join(' > ')}`)
           }
           for (const gs of s.groupStats) {
-            lines.push(`  ${gs.group}: mean=${gs.mean.toFixed(2)}, consensus=${(gs.consensus * 100).toFixed(0)}%`)
+            lines.push(`- **${gs.group}** — Ø ${gs.mean.toFixed(2)} (consensus ${(gs.consensus * 100).toFixed(0)}%)`)
           }
         }
 
         if (q.stats.categorical) {
           const c = q.stats.categorical
-          lines.push(`  Dominant: "${c.dominantCategory}" (${(c.dominanceRatio * 100).toFixed(0)}%)`)
-          lines.push(`  Cross-group divergence: ${(c.divergenceScore * 100).toFixed(0)}%`)
+          lines.push(`Dominant: _${c.dominantCategory}_ (${(c.dominanceRatio * 100).toFixed(0)}%) · cross-group divergence ${(c.divergenceScore * 100).toFixed(0)}%`)
           for (const gs of c.groupStats) {
-            lines.push(`  ${gs.group}: "${gs.dominant}" (${gs.unanimous ? 'unanimous' : `${(gs.dominanceRatio * 100).toFixed(0)}% agreement`})`)
+            lines.push(`- **${gs.group}** — _${gs.dominant}_ (${gs.unanimous ? 'unanimous' : `${(gs.dominanceRatio * 100).toFixed(0)}% agreement`})`)
           }
         }
 
         if (q.stats.qualitative) {
           const ql = q.stats.qualitative
-          lines.push(`  Unique themes: ${ql.uniqueCategories}`)
-          if (ql.sharedThemes.length > 0) {
-            lines.push(`  Shared across groups: ${ql.sharedThemes.join(', ')}`)
-          }
+          lines.push(`Unique themes: ${ql.uniqueCategories}${ql.sharedThemes.length > 0 ? ` · shared: ${ql.sharedThemes.join(', ')}` : ''}`)
           for (const gs of ql.groupStats) {
-            lines.push(`  ${gs.group}: dominant="${gs.dominant}", diversity=${(gs.diversityIndex * 100).toFixed(0)}%`)
+            lines.push(`- **${gs.group}** — _${gs.dominant}_ (diversity ${(((gs as any).diversityIndex ?? 0) * 100).toFixed(0)}%)`)
           }
         }
-        lines.push('')
       }
 
       if (stats.scaleQuestionRanking && stats.scaleQuestionRanking.length > 1) {
-        lines.push('--- Scale Question Ranking ---')
+        lines.push('', '### Scale question ranking')
         for (const sq of stats.scaleQuestionRanking) {
-          lines.push(`  ${sq.title}: mean=${sq.mean.toFixed(2)} (σ=${sq.sigma.toFixed(2)})`)
+          lines.push(`- ${sq.title} — **mean ${sq.mean.toFixed(2)}** (σ ${sq.sigma.toFixed(2)})`)
         }
       }
 
+      lines.push('', `[Open this panel in Minds →](${panelHref})`)
+
       return {
-        content: [{ type: 'text' as const, text: lines.join('\n') + `\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
         structuredContent: { panelId: resolvedPanelId, statistics: stats },
       }
     } catch (error) {

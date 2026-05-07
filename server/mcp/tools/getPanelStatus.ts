@@ -9,7 +9,7 @@ import { getPanelStatusSchema, type GetPanelStatusArgs, type McpServerContext } 
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { getPanelQuestions, type PendingQuestion } from '../utils/pendingQuestions'
-import { chatLink } from '../utils/links'
+import { chatLink, mindLink } from '../utils/links'
 import { API_BASE_URL } from '../config'
 
 export const getPanelStatusTool = {
@@ -19,14 +19,16 @@ export const getPanelStatusTool = {
     description: `Check the status of a panel — including live progress on in-flight questions.
 
 Returns:
-- Panel info (groups, Minds)
+- Panel info (groups, Minds) with clickable links to each Mind and to the panel
 - Active questions: which Minds have answered so far, how many remain
-- Completed question results (aggregated)
+- Completed question results (aggregated, structured per-group)
 - PDF export status (if any)
 
 Call this after ask_panel to track progress, or after export_panel with format "pdf" to check if the download is ready.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — when no rich widget is rendered (e.g. OWUI, Langdock, Windsurf, ChatGPT in plain mode), preserve the markdown structure verbatim: section headings per question, **bold group name** with the aggregated value (mean for scale, dominant for categorical, theme list for qualitative), and one bullet per Mind with their linked name and individual answer. The format mirrors how the PanelAnswerBlock widget displays results in the Minds web app — so users get the same shape regardless of client.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel link — they are the user's path back into the Minds platform.`,
     inputSchema: getPanelStatusSchema,
     annotations: {
       readOnlyHint: true,
@@ -89,20 +91,28 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
         }
       })
 
-      // Build text summary
+      // Build text summary as a PanelAnswerBlock-shaped markdown document.
+      // Non-widget clients (OWUI, Langdock, plain ChatGPT) render this verbatim,
+      // so every Mind name links to its detail page and the panel header links
+      // back to the workspace — same shape the widget would show.
+      const panelHref = chatLink(context.publicBaseUrl, resolvedPanelId)
+      const sparkLink = (id: string, name: string) => `[${name}](${mindLink(context.publicBaseUrl, id)})`
+      const linkSparkByName = (name: string): string => {
+        for (const g of groups) {
+          for (const s of g.sparks) if (s.name === name && s.id) return sparkLink(s.id, s.name)
+        }
+        return name
+      }
+
       const lines: string[] = [
-        `Panel: "${data.name}"`,
-        `ID: ${data.id}`,
-        `Created: ${data.createdAt}`,
-        `Messages: ${data.messageCount ?? data._count?.messages ?? 'unknown'}`,
+        `## [${data.name}](${panelHref})`,
+        `Created: ${data.createdAt} · Messages: ${data.messageCount ?? data._count?.messages ?? 'unknown'}`,
         '',
-        `Groups (${groups.length}):`,
+        `**Groups (${groups.length}):**`,
       ]
       for (const g of groups) {
-        lines.push(`  - "${g.name}" (${g.sparkCount} Mind(s))`)
-        for (const s of g.sparks) {
-          lines.push(`    - ${s.name}${s.discipline ? ` (${s.discipline})` : ''}`)
-        }
+        const memberLinks = g.sparks.map((s: any) => s.id ? sparkLink(s.id, s.name) : s.name).join(', ')
+        lines.push(`- **${g.name}** (${g.sparkCount} Mind${g.sparkCount === 1 ? '' : 's'}) — ${memberLinks || '_no Minds_'}`)
       }
 
       // Show pending/active questions
@@ -110,62 +120,109 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       const recentCompleted = pendingQuestions.filter(q => q.status === 'completed')
       const failed = pendingQuestions.filter(q => q.status === 'failed')
 
+      // Render per-group answers as a markdown TABLE (renders in OWUI, Langdock,
+      // plain ChatGPT, and inside the rich widget). For scale questions, append a
+      // unicode bar chart of group means so the user sees relative magnitudes
+      // even without the HTML widget.
+      const BAR_GLYPH = '█'
+      const renderScaleBar = (value: number, max: number, width: number = 20): string => {
+        if (!Number.isFinite(value) || max <= 0) return ''
+        const fill = Math.max(0, Math.min(width, Math.round((value / max) * width)))
+        return BAR_GLYPH.repeat(fill) + '·'.repeat(width - fill)
+      }
+      const renderAnswerTable = (rows: Array<{ name: string; value: string }>): string => {
+        if (rows.length === 0) return '_No answers yet._'
+        const header = '| Mind | Answer |\n|------|--------|'
+        const body = rows.map(r => `| ${r.name} | ${r.value} |`).join('\n')
+        return `${header}\n${body}`
+      }
+
       if (activeQuestions.length > 0) {
-        lines.push('')
         for (const q of activeQuestions) {
+          lines.push('', `### In progress: "${q.question}"`)
           const progress = q.totalMinds > 0
             ? `${q.answeredMinds.length}/${q.totalMinds} Minds answered`
             : `${q.answeredMinds.length} Minds answered so far`
-          const status = q.status === 'aggregating' ? 'aggregating results' : progress
-          lines.push(`Active question: "${q.question.slice(0, 60)}${q.question.length > 60 ? '...' : ''}"`)
-          lines.push(`  Status: ${status}`)
+          lines.push(q.status === 'aggregating' ? '_aggregating results…_' : `_${progress}_`)
           if (q.answeredMinds.length > 0) {
-            lines.push(`  Answered: ${q.answeredMinds.map(a => `${a.sparkName}: ${a.value.slice(0, 40)}`).join(', ')}`)
+            lines.push('')
+            lines.push(renderAnswerTable(q.answeredMinds.map(a => ({ name: linkSparkByName(a.sparkName), value: a.value }))))
           }
           if (q.totalMinds > 0 && q.answeredMinds.length < q.totalMinds) {
-            lines.push(`  Waiting for ${q.totalMinds - q.answeredMinds.length} more Mind(s)...`)
+            lines.push('', `_Waiting for ${q.totalMinds - q.answeredMinds.length} more Mind${q.totalMinds - q.answeredMinds.length === 1 ? '' : 's'}…_`)
           }
         }
       }
 
       if (recentCompleted.length > 0) {
-        // Update widget context with latest completed results
         const latestCompleted = recentCompleted[recentCompleted.length - 1]
         if (latestCompleted?.outputData && resolvedPanelId) {
           context.setLatestPanel(resolvedPanelId, latestCompleted.outputData)
         }
 
-        lines.push('')
-        lines.push('Recent results:')
         for (const q of recentCompleted) {
-          lines.push(`  "${q.question.slice(0, 60)}${q.question.length > 60 ? '...' : ''}" — completed`)
-          if (q.outputData) {
-            lines.push(`    Type: ${q.outputData.type}`)
-            for (const g of q.outputData.groups || []) {
-              lines.push(`    ${g.group}: ${g.value}`)
-              for (const a of g.answers || []) {
-                lines.push(`      - ${a.persona}: ${a.value}`)
+          lines.push('', `### ${q.question}`)
+          if (!q.outputData) continue
+          const type = q.outputData.type
+          const groupsArr = q.outputData.groups || []
+
+          // Scale questions: ASCII bar chart comparing group means at the top
+          // of the question section, then per-Mind tables below.
+          if (type === 'scale' && groupsArr.length > 0) {
+            const numericValues = groupsArr.map((g: any) => parseFloat(g.value)).filter((n: number) => Number.isFinite(n))
+            if (numericValues.length > 0) {
+              const maxVal = Math.max(...numericValues, 10)
+              lines.push('')
+              lines.push('| Group | Mean | Distribution |')
+              lines.push('|-------|------|--------------|')
+              for (const g of groupsArr) {
+                const v = parseFloat(g.value)
+                const bar = Number.isFinite(v) ? renderScaleBar(v, maxVal) : '—'
+                lines.push(`| **${g.group}** | ${Number.isFinite(v) ? v.toFixed(1) : g.value} | \`${bar}\` |`)
               }
             }
+          }
+
+          for (const g of groupsArr) {
+            // Aggregated value per group: mean for scale, dominant for categorical, theme list for qualitative.
+            const groupHeader = type === 'scale'
+              ? `**${g.group}** — Ø ${g.value}`
+              : type === 'categorical'
+                ? `**${g.group}** — _${g.value}_`
+                : `**${g.group}** — ${g.value}`
+            lines.push('', groupHeader)
+            const rows = (g.answers || []).map((a: any) => ({ name: linkSparkByName(a.persona), value: a.value }))
+            lines.push(renderAnswerTable(rows))
           }
         }
       }
 
       if (failed.length > 0) {
-        lines.push('')
         for (const q of failed) {
-          lines.push(`Failed question: "${q.question.slice(0, 60)}" — ${q.error || 'unknown error'}`)
+          lines.push('', `### ⚠️ Failed: "${q.question}"`)
+          lines.push(q.error || '_unknown error_')
         }
       }
 
+      // The server normally emits a pre-signed Supabase URL here; if signing
+      // failed and it fell back to the proxy path, make it absolute so the
+      // LLM client receives a clickable link.
+      const absoluteDownloadUrl = exportStatus?.downloadUrl
+        ? (exportStatus.downloadUrl.startsWith('http')
+          ? exportStatus.downloadUrl
+          : `${context.publicBaseUrl}${exportStatus.downloadUrl}`)
+        : undefined
+
       if (exportStatus) {
-        lines.push('', `Export: ${exportStatus.status || 'none'}`)
-        if (exportStatus.progress) lines.push(`  Progress: ${exportStatus.progress}%`)
-        if (exportStatus.downloadUrl) lines.push(`  Download: ${exportStatus.downloadUrl}`)
+        lines.push('', `**Export:** ${exportStatus.status || 'none'}`)
+        if (exportStatus.progress) lines.push(`Progress: ${exportStatus.progress}%`)
+        if (absoluteDownloadUrl) lines.push(`[Download](${absoluteDownloadUrl})`)
       }
 
+      lines.push('', `[Open this panel in Minds →](${panelHref})`)
+
       return {
-        content: [{ type: 'text' as const, text: lines.join('\n') + `\n\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
         structuredContent: {
           panelId: resolvedPanelId,
           name: data.name,
@@ -176,7 +233,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
           activeQuestions: activeQuestions.map(formatPendingQuestion),
           recentResults: recentCompleted.map(formatPendingQuestion),
           failedQuestions: failed.map(formatPendingQuestion),
-          exportStatus,
+          exportStatus: exportStatus ? { ...exportStatus, downloadUrl: absoluteDownloadUrl } : undefined,
           apiBase: context.publicBaseUrl || API_BASE_URL,
           authToken: context.apiKey,
         },

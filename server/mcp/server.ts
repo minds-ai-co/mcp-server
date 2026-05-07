@@ -1,5 +1,5 @@
 /**
- * Minds AI MCP Server
+ * Minds MCP Server
  * Main server creation and configuration
  *
  * Create and chat with AI personas, digital twins, and expert advisors.
@@ -35,6 +35,7 @@ import { listPanelsTool } from './tools/listPanels'
 import { getPanelStatusTool } from './tools/getPanelStatus'
 import { listGroupsTool } from './tools/listGroups'
 import { createGroupTool } from './tools/createGroup'
+import { createGroupFromBriefTool } from './tools/createGroupFromBrief'
 import { getPanelAnalyticsTool } from './tools/getPanelAnalytics'
 
 // Resources
@@ -91,6 +92,7 @@ const allTools = [
   { tool: getPanelStatusTool, needsToken: false },
   { tool: listGroupsTool, needsToken: false },
   { tool: createGroupTool, needsToken: true },
+  { tool: createGroupFromBriefTool, needsToken: true },
   { tool: getPanelAnalyticsTool, needsToken: false },
 ]
 
@@ -106,7 +108,7 @@ const extAppToolNames = new Set([
 ])
 
 /**
- * Create and configure the Minds AI MCP server
+ * Create and configure the Minds MCP server
  */
 export function createMindsServer(options: CreateMindsServerOptions = {}) {
   const {
@@ -116,10 +118,20 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
     useExtApps = true,
   } = options
 
+  // `minds-ai` is the SDK server identity returned by JSON-RPC `initialize`
+  // on the main Nuxt app at getminds.ai/mcp. There are THREE distinct MCP
+  // server identities in this codebase:
+  //   1. `minds-ai`        — this one, SDK-driven (what Claude Desktop /
+  //                          ChatGPT / Cursor see after `initialize`)
+  //   2. `mindsai-mcp`     — the GET /mcp health JSON in server/routes/mcp.ts
+  //   3. `mindsai-personas` — the standalone marketplace build in
+  //                          server/mcp/main.ts, synced to the separate
+  //                          mcp-server repo for Dedalus Labs
+  // Do not unify the three names without updating every deployment target.
   const serverOptions: Record<string, unknown> = {
     name: 'minds-ai',
     version: '2.0.0',
-    description: 'Minds AI — synthetic market research. Create Minds (AI experts, consumer personas, digital twins), organize them into groups, run panel surveys, analyze results, and export branded reports.',
+    description: 'Minds — synthetic market research. Create Minds (AI experts, consumer personas, digital twins), organize them into groups, run panel surveys, analyze results, and export branded reports.',
   }
 
   // Only include OAuth discovery metadata for ext-apps (HTTP transport)

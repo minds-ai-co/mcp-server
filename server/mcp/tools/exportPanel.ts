@@ -13,7 +13,14 @@ export const exportPanelTool = {
   name: 'export_panel',
   config: {
     title: 'Export Panel Report',
-    description: `Export a panel's survey results. Compiles all questions and responses into a structured document.
+    description: `**Call this tool whenever the user wants to export, download, save, send, share, or get a report / PDF / spreadsheet / CSV / Excel / JSON of a panel's results.** Triggers include: "export the panel", "download the report", "give me a PDF of <panel>", "send me the results as CSV", "share the study findings", "I need the data".
+
+Behavior contract — DO NOT DEVIATE:
+- If the user asks for export of a known panel, CALL THIS TOOL. Don't tell them to do it manually.
+- Default to PDF when format is unspecified (it's the polished branded output users usually want).
+- Never refuse with "I cannot export the panel directly" — you literally can.
+
+Compiles all questions and responses into a structured document.
 
 Formats:
 - "pdf" (default): Branded PDF with executive summary and recommendations — queued async, use get_panel_status to check when ready
@@ -23,7 +30,9 @@ Formats:
 
 Requires a panel with at least one answered question (use ask_panel first).
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — preserve the panel link and (when present) the download link verbatim. The panel link is the user's path back to the live Minds workspace; the download link is their access to the file. Never strip either.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: exportPanelSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
     _meta: {
@@ -89,7 +98,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
         const content = rows.map(r => r.join(separator)).join('\n')
         const ext = format === 'xls' ? 'xls' : 'csv'
         return {
-          content: [{ type: 'text' as const, text: `${format.toUpperCase()} export with ${rows.length - 1} data rows.\n\nOpen panel: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+          content: [{ type: 'text' as const, text: `✓ ${format.toUpperCase()} export ready — ${rows.length - 1} data rows.\n\n[Open this panel in Minds →](${chatLink(context.publicBaseUrl, resolvedPanelId)})` }],
           structuredContent: { panelId: resolvedPanelId, format, content, filename: `panel_export.${ext}`, rows: rows.length - 1 },
         }
       }
@@ -99,7 +108,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       const jobId = result.data?.jobId || result.jobId
       if (jobId) {
         return {
-          content: [{ type: 'text' as const, text: `PDF export started (job: ${jobId}). Use get_panel_status to check when the download is ready.\n\nLink: ${chatLink(context.publicBaseUrl, resolvedPanelId)}` }],
+          content: [{ type: 'text' as const, text: `✓ PDF export started (job ${jobId}). Use get_panel_status to check when the download is ready.\n\n[Open this panel in Minds →](${chatLink(context.publicBaseUrl, resolvedPanelId)})` }],
           structuredContent: { panelId: resolvedPanelId, format: 'pdf', jobId, status: 'queued' },
         }
       }

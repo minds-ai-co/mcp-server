@@ -12,11 +12,13 @@ export const getSparkStatusTool = {
   name: 'get_mind_status',
   config: {
     title: 'Get Mind Status',
-    description: `Check if a Mind has finished training after creation. Returns progress percentage and current stage.
+    description: `**Call this tool whenever the user wants to check progress / status / readiness of a Mind / persona / digital twin / expert that's still training.** Triggers include: "is <Mind> ready?", "how's <persona> coming along?", "training progress for <name>", "did the Mind finish?".
 
-Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.
+Returns progress percentage, current training stage, and a link to open the Mind in the workspace. Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+PRESENTATION CONTRACT — preserve the Mind link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: getSparkStatusSchema,
     annotations: {
       readOnlyHint: true,
@@ -55,12 +57,14 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       const isReady = statusResult.status === 'completed' || statusResult.status === 'idle'
       const spark = statusResult.spark
 
+      const sparkName = spark?.name
+      const linkedName = sparkName ? `[${sparkName}](${mindLink(context.publicBaseUrl, sparkId)})` : `[this Mind](${mindLink(context.publicBaseUrl, sparkId)})`
       return {
         content: [{
           type: 'text' as const,
           text: isReady
-            ? `✓ Mind is ready to chat!\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`
-            : `Mind status: ${statusResult.status} (${statusResult.progress}%) — ${statusResult.message}\n\nOpen in Minds AI: ${mindLink(context.publicBaseUrl, sparkId)}`,
+            ? `✓ ${linkedName} is ready to chat!\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, sparkId)})`
+            : `${linkedName} — ${statusResult.status} (${statusResult.progress}%): ${statusResult.message}\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, sparkId)})`,
         }],
         structuredContent: {
           spark: spark ? {

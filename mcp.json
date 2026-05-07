@@ -9,47 +9,47 @@
   "tools": [
     {
       "name": "list_my_ai_personas",
-      "description": "List all your AI knowledge bases with optional fuzzy search"
+      "description": "List your AI personas (also called: experts, digital twins, consumers, respondents, characters, profiles). Supports fuzzy name search."
     },
     {
       "name": "create_ai_persona_or_digital_twin",
-      "description": "Create an AI knowledge base trained on topics, people, or websites"
+      "description": "Create an AI persona / expert / digital twin / consumer character — trained on topics (keywords), a public figure (clone), or a URL (link)."
     },
     {
       "name": "talk_to_ai_persona",
-      "description": "Chat with an AI knowledge base and get expert analysis"
+      "description": "Talk / message / chat with one of your AI personas. Use this for 1:1 conversations — for surveying multiple personas at once, use ask_panel."
     },
     {
       "name": "check_ai_persona_training_progress",
-      "description": "Check the training status of an AI knowledge base"
+      "description": "Check whether an AI persona has finished training. Returns progress percentage and current stage."
     },
     {
       "name": "create_panel",
-      "description": "Create a research panel with groups of AI knowledge bases for comparative analysis"
+      "description": "Start a research panel / study / survey / focus group with one or more groups of AI personas for comparative analysis."
     },
     {
       "name": "ask_panel",
-      "description": "Submit a research question to a panel — responses streamed in real-time with cross-group comparison"
+      "description": "Ask / survey / poll a panel any question. Each persona answers; results aggregate per group (mean, dominant choice, theme clusters). Triggers: 'how do they feel', 'what does <panel> think', 'ask the group'."
     },
     {
       "name": "list_panels",
-      "description": "List all research panels with group composition and message counts"
+      "description": "List your panels (also called: studies, surveys, research projects, focus groups, qual studies, conversations). Supports fuzzy name search."
     },
     {
       "name": "get_panel_status",
-      "description": "Get detailed panel info including groups, messages, and export status"
+      "description": "Get a panel's live status — groups, members, in-flight questions, completed results (with per-group breakdowns), and PDF export status."
     },
     {
       "name": "get_panel_analytics",
-      "description": "Compute statistics for panel questions — mean, distribution, themes, divergence"
+      "description": "Summarize a panel's findings across all questions — mean, distribution, theme clusters, group divergence, scale-question ranking."
     },
     {
       "name": "export_panel",
-      "description": "Export panel results as markdown, branded PDF, or JSON data"
+      "description": "Export / download a panel as branded PDF, CSV, Excel, or JSON. PDF is the default polished report."
     },
     {
       "name": "list_groups",
-      "description": "List knowledge base groups with member details"
+      "description": "List your groups (also called: segments, audiences, cohorts) with their member personas."
     }
   ],
   "resources": [

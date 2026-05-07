@@ -49,5 +49,5 @@ export async function loadSparkWidget(publicUrl: string): Promise<string> {
 }
 
 function getFallbackSparkWidget(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Minds AI - Spark</title><style>body{font-family:system-ui;padding:20px;background:#0a0a0b;color:#fff;}</style></head><body><p>Minds AI Spark Widget</p><p>Widget not loaded. Check server logs.</p></body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Minds - Spark</title><style>body{font-family:system-ui;padding:20px;background:#0a0a0b;color:#fff;}</style></head><body><p>Minds Spark Widget</p><p>Widget not loaded. Check server logs.</p></body></html>`
 }

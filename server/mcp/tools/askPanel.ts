@@ -25,18 +25,26 @@ export const askPanelTool = {
   name: 'ask_panel',
   config: {
     title: 'Ask a Panel',
-    description: `Submit a research question to a panel. Returns immediately — each Mind answers in the background.
+    description: `**Call this tool whenever the user wants to ask, survey, poll, query, or have any panel / study / focus group respond to anything.** Triggers: "ask my panel X", "survey my panel about Y", "what does <panel> think", "how is <panel> feeling", "ask the group", "poll them", "let's hear from <panel>", "ask the panel <name> if they prefer X or Y".
 
-Use get_panel_status to track progress (which Minds have answered) and get the final aggregated results.
+Behavior contract — DO NOT DEVIATE:
+- If the user names a panel and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their question verbatim. Pass the user's panel name directly as panelName — DO NOT call list_panels first. Fuzzy match is built in.
+- "How are they feeling?", "What do they think?", "Ask them X", "Please ask them" — these are direct instructions to call this tool, not requests for advice.
+- AFTER calling this tool, the question HAS BEEN ASKED. Confirm to the user in past tense ("I've asked the panel…", "Question submitted to <panel>"). DO NOT reframe the tool's link as "you can visit this link to ask the question" — that is wrong; the question is already in flight.
+- Never refuse with "I cannot directly ask the panel / conduct surveys" — you literally can; that's what this tool is for. The user EXPLICITLY asked you to call it; refusing is a bug, not safety.
 
-Questions are auto-classified as:
-- Scale (e.g., "Rate 1-10...") → mean, distribution per group
-- Categorical (e.g., "Which channel...") → dominant choice per group
-- Qualitative (e.g., "What trends...") → themed responses per group
+What it does: submits the user's question to the panel. Returns immediately — each Mind answers asynchronously. Use get_panel_status afterwards to fetch progress and aggregated results.
 
-Requires an existing panel — use create_panel first, or list_panels to find one.
+Question types are auto-classified:
+- Scale ("Rate 1-10...") → mean, distribution per group
+- Categorical ("Which channel...") → dominant choice per group
+- Qualitative ("What trends...", "How are you feeling?") → themed responses per group
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or rephrase any URL.`,
+Requires an existing panel — call create_panel first if none exists, or list_panels to disambiguate.
+
+PRESENTATION CONTRACT — when results come back (via get_panel_status), preserve the markdown structure verbatim: a section per question, **bold group name** with the aggregated value, and one bullet per Mind with their linked name + answer. This mirrors the PanelAnswerBlock widget. The panel link returned here is the user's path back to the live Minds workspace — always show it.
+
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel link.`,
     inputSchema: askPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
     _meta: {
@@ -76,7 +84,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify or re
       return {
         content: [{
           type: 'text' as const,
-          text: `Survey started (question: "${args.question.slice(0, 80)}${args.question.length > 80 ? '...' : ''}"). Use get_panel_status to track progress and get results.\n\nOpen in Minds AI: ${chatLink(context.publicBaseUrl, resolvedPanelId)}`,
+          text: `✓ Question submitted to the panel. The Minds are answering now: _"${args.question}"_\n\nTell the user the question has been asked (past tense). Use get_panel_status next to fetch the aggregated results when they're ready.\n\n[View live progress in the Minds workspace →](${chatLink(context.publicBaseUrl, resolvedPanelId)})`,
         }],
         structuredContent: {
           questionId: pending.questionId,

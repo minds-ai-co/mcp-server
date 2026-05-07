@@ -60,7 +60,7 @@ export function createApiClient(config: ApiClientConfig) {
     options: RequestInit & { timeout?: number } = {}
   ): Promise<T> {
     if (!authToken) {
-      throw new Error('Authentication required. Please configure your Minds AI API key in ChatGPT settings.')
+      throw new Error('Authentication required. Please configure your Minds API key in ChatGPT settings.')
     }
 
     const url = `${baseUrl}${endpoint}`
