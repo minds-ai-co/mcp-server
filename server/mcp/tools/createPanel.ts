@@ -66,8 +66,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             }
             allGroupIds.push(groupId)
           } catch (err) {
-            logger.warn('[create_panel] Group creation failed', { groupName: gc.name, error: err instanceof Error ? err.message : String(err) })
-            failedGroups.push(gc.name)
+            const errMsg = err instanceof Error ? err.message : String(err)
+            logger.warn('[create_panel] Group creation failed', { groupName: gc.name, error: errMsg })
+            failedGroups.push(`${gc.name} (${errMsg})`)
           }
         }
       }
