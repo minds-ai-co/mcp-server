@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createMindsServer } from './server'
+import { pruneIdleSessions } from './session-eviction'
 
 const API_URL = process.env.MINDSAI_API_URL || 'https://getminds.ai'
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -33,13 +34,9 @@ const sessions = new Map<string, Session>()
  * never send DELETE or close their SSE stream.
  */
 const sessionCleanupInterval = setInterval(() => {
-  const cutoff = Date.now() - SESSION_TTL_MS
-  for (const [id, session] of sessions) {
-    if (session.lastUsedAt < cutoff) {
-      session.transport.close().catch(() => {})
-      sessions.delete(id)
-      console.log('[MCP] Evicted idle session:', id)
-    }
+  const evicted = pruneIdleSessions(sessions, SESSION_TTL_MS, Date.now())
+  for (const id of evicted) {
+    console.log('[MCP] Evicted idle session:', id)
   }
 }, 5 * 60 * 1000)
 if (sessionCleanupInterval.unref) {
