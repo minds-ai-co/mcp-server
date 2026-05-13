@@ -32,6 +32,7 @@ const pending = new Map<string, PendingQuestion>()
 // Cleanup completed questions after 5 minutes
 const CLEANUP_TTL_MS = 5 * 60 * 1000
 
+// .unref() so this timer doesn't pin the Node event loop at build time.
 setInterval(() => {
   const now = Date.now()
   for (const [id, q] of pending) {
@@ -39,7 +40,7 @@ setInterval(() => {
       pending.delete(id)
     }
   }
-}, 60_000)
+}, 60_000).unref()
 
 export function createPendingQuestion(panelId: string, question: string): PendingQuestion {
   const entry: PendingQuestion = {

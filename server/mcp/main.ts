@@ -16,12 +16,35 @@ const API_URL = process.env.MINDSAI_API_URL || 'https://getminds.ai'
 const PORT = parseInt(process.env.PORT || '3001', 10)
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'
 
+/** Sessions idle longer than this are evicted (30 minutes). */
+const SESSION_TTL_MS = 30 * 60 * 1000
+
 // Session storage for maintaining state across requests
 interface Session {
   transport: StreamableHTTPServerTransport
   server: McpServer
+  lastUsedAt: number
 }
 const sessions = new Map<string, Session>()
+
+/**
+ * Evict sessions that have been idle longer than SESSION_TTL_MS.
+ * Runs every 5 minutes so the map does not grow unboundedly when clients
+ * never send DELETE or close their SSE stream.
+ */
+const sessionCleanupInterval = setInterval(() => {
+  const cutoff = Date.now() - SESSION_TTL_MS
+  for (const [id, session] of sessions) {
+    if (session.lastUsedAt < cutoff) {
+      session.transport.close().catch(() => {})
+      sessions.delete(id)
+      console.log('[MCP] Evicted idle session:', id)
+    }
+  }
+}, 5 * 60 * 1000)
+if (sessionCleanupInterval.unref) {
+  sessionCleanupInterval.unref()
+}
 
 /**
  * Set CORS headers
@@ -47,6 +70,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
     // Existing session - reuse it
     if (sessionId && sessions.has(sessionId)) {
       const session = sessions.get(sessionId)!
+      session.lastUsedAt = Date.now()
       await session.transport.handleRequest(req, res)
       return
     }
@@ -61,13 +85,13 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
       const server = createMindsServer({ publicBaseUrl: API_URL, authToken: apiKey })
       await server.connect(transport)
 
-      sessions.set(newSessionId, { transport, server })
-      console.log(`[MCP] Created session: ${newSessionId}`)
+      sessions.set(newSessionId, { transport, server, lastUsedAt: Date.now() })
+      console.log('[MCP] Created session:', newSessionId)
 
       // Clean up session when transport closes
       transport.onclose = () => {
         sessions.delete(newSessionId)
-        console.log(`[MCP] Closed session: ${newSessionId}`)
+        console.log('[MCP] Closed session:', newSessionId)
       }
 
       await transport.handleRequest(req, res)
@@ -80,7 +104,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
       if (session) {
         await session.transport.close()
         sessions.delete(sessionId)
-        console.log(`[MCP] Deleted session: ${sessionId}`)
+        console.log('[MCP] Deleted session:', sessionId)
         res.writeHead(200)
         res.end()
       } else {
@@ -177,7 +201,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
 const server = createServer(requestHandler)
 
 server.listen(PORT, HOST, () => {
-  console.log(`[MCP] Minds server listening on http://${HOST}:${PORT}`)
-  console.log(`[MCP] MCP endpoint: http://${HOST}:${PORT}/mcp`)
-  console.log(`[MCP] Health check: http://${HOST}:${PORT}/health`)
+  console.log('[MCP] Minds server listening on http://' + HOST + ':' + PORT)
+  console.log('[MCP] MCP endpoint: http://' + HOST + ':' + PORT + '/mcp')
+  console.log('[MCP] Health check: http://' + HOST + ':' + PORT + '/health')
 })
