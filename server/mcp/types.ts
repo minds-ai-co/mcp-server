@@ -143,6 +143,12 @@ export interface CreateMindsServerOptions {
   apiBaseUrl?: string
   /** Use ext-apps registration for tools/resources (HTTP transport) */
   useExtApps?: boolean
+  /**
+   * Alias-to-canonical map registered alongside canonical tools.
+   * Defaults to the module-level TOOL_ALIASES. Override in tests to
+   * exercise the construction-time guards without mutating shared state.
+   */
+  toolAliases?: Record<string, string>
 }
 
 // Server context passed to tool handlers
