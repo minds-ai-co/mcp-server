@@ -37,6 +37,7 @@ import { listGroupsTool } from './tools/listGroups'
 import { createGroupTool } from './tools/createGroup'
 import { createGroupFromBriefTool } from './tools/createGroupFromBrief'
 import { getPanelAnalyticsTool } from './tools/getPanelAnalytics'
+import { TOOL_ALIASES } from './tools'
 
 // Resources
 import { sparkWidgetResource } from './resources/sparkWidget'
@@ -116,6 +117,7 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
     authToken = '',
     apiBaseUrl,
     useExtApps = true,
+    toolAliases = TOOL_ALIASES,
   } = options
 
   // `minds-ai` is the SDK server identity returned by JSON-RPC `initialize`
@@ -295,12 +297,17 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
   // Register Tools
   // ============================================
 
-  for (const { tool, needsToken } of allTools) {
-    const useExtApp = useExtApps && extAppToolNames.has(tool.name)
-    const register = useExtApp
+  // Pick the right registration function for a given canonical tool name.
+  // ext-apps tools (those with a Response Widget) must use registerAppTool;
+  // all others use server.registerTool.
+  const pickRegister = (canonicalToolName: string) =>
+    useExtApps && extAppToolNames.has(canonicalToolName)
       ? (name: string, config: any, handler: any) => registerAppTool(server, name, config, handler)
       : (name: string, config: any, handler: any) => server.registerTool(name, config, handler)
 
+  const canonicalByName = new Map<string, { config: any; wrappedHandler: (args: any) => Promise<any> }>()
+
+  for (const { tool, needsToken } of allTools) {
     const wrappedHandler = async (args: any) => {
       if (needsToken) await ensureTokenReady()
       const result = await tool.handler(args as any, getContext())
@@ -308,7 +315,21 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
       return result
     }
 
-    register(tool.name, tool.config, wrappedHandler)
+    pickRegister(tool.name)(tool.name, tool.config, wrappedHandler)
+    canonicalByName.set(tool.name, { config: tool.config, wrappedHandler })
+  }
+
+  // Register aliases against the same handlers as their canonical tools.
+  // Absorbs LLM tool-name hallucinations — see TOOL_ALIASES in server/mcp/tools/index.ts.
+  for (const [aliasName, canonicalName] of Object.entries(toolAliases)) {
+    if (canonicalByName.has(aliasName)) {
+      throw new Error(`MCP alias "${aliasName}" collides with a registered canonical tool name (see TOOL_ALIASES in server/mcp/tools/index.ts)`)
+    }
+    const entry = canonicalByName.get(canonicalName)
+    if (!entry) {
+      throw new Error(`MCP alias "${aliasName}" points to unknown canonical tool "${canonicalName}" (see TOOL_ALIASES in server/mcp/tools/index.ts)`)
+    }
+    pickRegister(canonicalName)(aliasName, entry.config, entry.wrappedHandler)
   }
 
   return server
