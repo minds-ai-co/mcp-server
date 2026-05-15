@@ -203,6 +203,22 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         logger.debug('Using DEMO mode')
 
         // Step 1: Generate profile
+        // For keywords mode, skip the expensive generate-profile call (Tavily
+        // search + LLM type determination + LLM profile gen = 30-60s) and build
+        // a minimal profile locally. The user already provided keywords + name;
+        // the heavy web research is unnecessary and makes CI tests flaky.
+        let profile: { name: string; discipline: string | null; keywords: string[]; type: string; imageUrl: string | null; socialLinks?: string[] }
+
+        if (mode === 'keywords') {
+          logger.debug('Step 1: Skipping generate-profile for keywords mode (local profile)')
+          profile = {
+            name,
+            discipline: discipline || keywords?.[0] || name,
+            keywords: keywords || [],
+            type: type || 'expert',
+            imageUrl: null,
+          }
+        } else {
         const queryUrl = mode === 'clone' ? personaContext : (mode === 'link' ? contextLink : name)
         logger.debug('Step 1: Generating profile', { queryUrl, effectiveApiUrl })
         const profileResponse = await fetchWithTimeout(`${effectiveApiUrl}/api/spark/generate-profile`, {
@@ -225,8 +241,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         }
 
         const profileData = await profileResponse.json()
-        const profile = profileData.data
+        profile = profileData.data
         logger.debug('Step 1 OK - profile generated', { name: profile.name, discipline: profile.discipline })
+        }
 
         // Step 2: Create the spark with demo flag
         logger.debug('Step 2: Creating spark')
@@ -250,7 +267,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             profileImageUrl: profile.imageUrl || null,
             demo: true,
           }),
-          timeout: TIMEOUT_CONFIG.DEFAULT_API_TIMEOUT,
+          timeout: TIMEOUT_CONFIG.SPARK_CREATION_TIMEOUT,
         })
 
         if (!createResponse.ok) {
