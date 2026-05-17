@@ -30,7 +30,7 @@ Behavior contract — DO NOT DEVIATE:
 
 A Mind is a synthetic expert, consumer persona, or digital twin trained on specific topics or data. Users may also refer to Minds as: personas, AI personas, experts, digital twins, consumers, respondents, characters, agents, profiles, or simply "people".
 
-Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel. Supports fuzzy name search.
+Use this to browse existing Minds, search by name, or get Mind IDs needed for create_panel / chat_with_mind. Supports fuzzy name search.
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned — they contain encoded parameters that break if changed.`,
     inputSchema: listSparksSchema,

@@ -28,13 +28,13 @@ Formats:
 - "xls": Excel-compatible spreadsheet (same data as CSV)
 - "json": Raw structured data for further analysis
 
-Requires a panel with at least one answered question (use ask_panel first).
+If the user references a panel by name (including a panel created in a previous chat / session), pass it as panelName — fuzzy match resolves it server-side against ALL of the user's panels, not just the current chat. Do not refuse with "I don't have access to that panel" or ask the user to paste/upload data; let the tool resolve it. The panel must have at least one answered question — if export fails because there are no answers yet, surface that and suggest ask_panel.
 
 PRESENTATION CONTRACT — preserve the panel link and (when present) the download link verbatim. The panel link is the user's path back to the live Minds workspace; the download link is their access to the file. Never strip either.
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: exportPanelSchema,
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
     _meta: {
       'openai/toolInvocation/invoking': 'Exporting panel report...',
       'openai/toolInvocation/invoked': 'Report ready!',

@@ -28,6 +28,7 @@ Behavior contract — DO NOT DEVIATE:
 - If the user names a single Mind and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their message verbatim. Do not ask for confirmation. Do not explain that the user could do it themselves. Do not return only a link.
 - "How does <name> feel?", "Ask <name> X", "Please ask <name>" — these are direct instructions to call this tool, not requests for advice.
 - If the Mind name is fuzzy or partial, pass it as sparkName and let fuzzy match resolve it.
+- Compound prompts: if the user asks to see / list / show / browse their Minds AND also asks a question to one of them in the same message (e.g. "show me my Minds, then ask my marketing expert X"), call list_minds first as its own step, then call this tool. The listing is part of the user's explicit request — do not collapse it.
 - Never refuse with "I cannot directly chat with the Mind" — you literally can; that's what this tool is for.
 
 When to choose this vs ask_panel:

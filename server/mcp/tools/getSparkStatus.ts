@@ -16,9 +16,7 @@ export const getSparkStatusTool = {
 
 Returns progress percentage, current training stage, and a link to open the Mind in the workspace. Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.
 
-PRESENTATION CONTRACT — preserve the Mind link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
-
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
+You MUST include the returned Mind URL (structuredContent.url or the resource_link) in your reply to the user, verbatim. It is the user's path back to the live Minds workspace.`,
     inputSchema: getSparkStatusSchema,
     annotations: {
       readOnlyHint: true,
@@ -56,16 +54,21 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
 
       const isReady = statusResult.status === 'completed' || statusResult.status === 'idle'
       const spark = statusResult.spark
+      const sparkUrl = mindLink(context.publicBaseUrl, sparkId)
 
       const sparkName = spark?.name
-      const linkedName = sparkName ? `[${sparkName}](${mindLink(context.publicBaseUrl, sparkId)})` : `[this Mind](${mindLink(context.publicBaseUrl, sparkId)})`
+      const linkedName = sparkName ? `[${sparkName}](${sparkUrl})` : `[this Mind](${sparkUrl})`
+      const displayName = sparkName || 'this Mind'
       return {
-        content: [{
-          type: 'text' as const,
-          text: isReady
-            ? `✓ ${linkedName} is ready to chat!\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, sparkId)})`
-            : `${linkedName} — ${statusResult.status} (${statusResult.progress}%): ${statusResult.message}\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, sparkId)})`,
-        }],
+        content: [
+          {
+            type: 'text' as const,
+            text: isReady
+              ? `✓ ${linkedName} is ready to chat!\n\n[Open this Mind in the workspace →](${sparkUrl})`
+              : `${linkedName} — ${statusResult.status} (${statusResult.progress}%): ${statusResult.message}\n\n[Open this Mind in the workspace →](${sparkUrl})`,
+          },
+          { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${displayName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
+        ],
         structuredContent: {
           spark: spark ? {
             id: spark.id,
@@ -74,7 +77,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             type: spark.type,
             discipline: spark.discipline,
             profileImageUrl: spark.profileImageUrl,
-          } : { id: sparkId },
+            url: sparkUrl,
+          } : { id: sparkId, url: sparkUrl },
+          url: sparkUrl,
           isProcessing: !isReady,
           progress: statusResult.progress,
           status: statusResult.status,
