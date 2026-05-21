@@ -27,7 +27,7 @@ export const chatWithSparkTool = {
 Behavior contract — DO NOT DEVIATE:
 - If the user names a single Mind and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their message verbatim. Do not ask for confirmation. Do not explain that the user could do it themselves. Do not return only a link.
 - "How does <name> feel?", "Ask <name> X", "Please ask <name>" — these are direct instructions to call this tool, not requests for advice.
-- If the Mind name is fuzzy or partial, pass it as sparkName and let fuzzy match resolve it.
+- If the Mind name is fuzzy or partial, pass it as mindName (or legacy sparkName) and let fuzzy match resolve it.
 - Compound prompts: if the user asks to see / list / show / browse their Minds AND also asks a question to one of them in the same message (e.g. "show me my Minds, then ask my marketing expert X"), call list_minds first as its own step, then call this tool. The listing is part of the user's explicit request — do not collapse it.
 - Never refuse with "I cannot directly chat with the Mind" — you literally can; that's what this tool is for.
 
@@ -36,7 +36,7 @@ When to choose this vs ask_panel:
 - A panel / study / group / focus group / multiple Minds → ask_panel
 
 What it does: sends a message to the specified Mind, supports multi-turn conversations, returns the response.
-Provide sparkId (UUID) or sparkName — use list_minds only when there's no plausible match in context.
+Provide mindId (UUID) or mindName — use list_minds only when there's no plausible match in context. Legacy sparkId/sparkName parameters are still accepted.
 
 PRESENTATION CONTRACT — render the Mind's response as the body, then keep the attribution line + "Open this Mind in the workspace" link verbatim at the bottom. The link is the user's path back to the live Minds workspace; never strip it.
 
@@ -65,7 +65,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
   },
 
   handler: async (args: ChatWithSparkArgs, context: McpServerContext) => {
-    const { sparkId, sparkName, message, conversationHistory } = args
+    const { message, conversationHistory } = args
+    const sparkId = args.mindId ?? args.sparkId
+    const sparkName = args.mindName ?? args.sparkName
     const { apiCall } = createApiClient({ authToken: context.apiKey, apiBaseUrl: context.apiBaseUrl })
 
     try {
@@ -116,7 +118,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
 
       if (!resolvedSparkId) {
         return {
-          content: [{ type: 'text' as const, text: 'Please provide either sparkId or sparkName to chat with a Spark.' }],
+          content: [{ type: 'text' as const, text: 'Please provide either mindId or mindName to chat with a Mind.' }],
           isError: true,
         }
       }
@@ -165,6 +167,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             profileImageUrl: resolvedSparkData.profileImageUrl,
           } : { id: resolvedSparkId },
           sparkId: resolvedSparkId,
+          mindId: resolvedSparkId,
           initialMessage: message,
           initialResponse: result.content,
           metadata: result.metadata,

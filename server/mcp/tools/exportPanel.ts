@@ -7,7 +7,7 @@ import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { chatLink } from '../utils/links'
 
-interface ExportPanelArgs { panelId?: string; panelName?: string; format?: 'pdf' | 'json' | 'csv' | 'xls' }
+interface ExportPanelArgs { panelId?: string; panelName?: string; format?: 'pdf' | 'json' | 'csv' | 'xls' | 'md' | 'markdown' }
 
 export const exportPanelTool = {
   name: 'export_panel',
@@ -27,6 +27,7 @@ Formats:
 - "csv": Spreadsheet with all questions, groups, personas, answers, and full responses
 - "xls": Excel-compatible spreadsheet (same data as CSV)
 - "json": Raw structured data for further analysis
+- "md": Markdown report (heading-per-question + bulleted answers per group)
 
 If the user references a panel by name (including a panel created in a previous chat / session), pass it as panelName — fuzzy match resolves it server-side against ALL of the user's panels, not just the current chat. Do not refuse with "I don't have access to that panel" or ask the user to paste/upload data; let the tool resolve it. The panel must have at least one answered question — if export fails because there are no answers yet, surface that and suggest ask_panel.
 
@@ -55,10 +56,11 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       }
       if (!resolvedPanelId) return { content: [{ type: 'text' as const, text: 'Provide panelId or panelName.' }], isError: true }
 
-      const format = args.format || 'pdf'
+      const rawFormat = args.format || 'pdf'
+      const format = rawFormat === 'markdown' ? 'md' : rawFormat
 
-      // Fetch panel data (needed for CSV, XLS, JSON)
-      if (format === 'json' || format === 'csv' || format === 'xls') {
+      // Fetch panel data (needed for CSV, XLS, JSON, MD)
+      if (format === 'json' || format === 'csv' || format === 'xls' || format === 'md') {
         const panel = await apiCall(`/api/v1/panels/${resolvedPanelId}`)
         const data = panel.data || panel
 
@@ -66,6 +68,48 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
             structuredContent: { panelId: resolvedPanelId, format: 'json', data },
+          }
+        }
+
+        if (format === 'md') {
+          const lines: string[] = []
+          lines.push(`# Panel: ${data.name || 'Untitled'}`)
+          const messages = (data.messages || []).filter((m: any) => m.role === 'assistant')
+
+          let qIndex = 0
+          for (const msg of messages) {
+            const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+            if (!metadata?.outputData) continue
+            const od = metadata.outputData
+            const question = od.title || od.formattedQuestion || ''
+            qIndex += 1
+            lines.push('')
+            lines.push(`## Q${qIndex}. ${question}`)
+            for (const group of od.groups || []) {
+              lines.push(`### Group: ${group.group}`)
+              for (const answer of group.answers || []) {
+                const body = answer.message || (answer.value != null ? String(answer.value) : '')
+                const discipline = answer.discipline ? ` (${answer.discipline})` : ''
+                lines.push(`- **${answer.persona}**${discipline}: ${body}`)
+              }
+            }
+          }
+
+          // Size cap: MCP responses get forwarded into LLM context windows. Anything
+          // over ~100KB blows past most clients' practical limit and can blow up
+          // streaming. Truncate with a clear marker so the caller knows.
+          const MAX_MD_CHARS = 100_000
+          let content = lines.join('\n')
+          if (content.length > MAX_MD_CHARS) {
+            const fullLength = content.length
+            content = content.slice(0, MAX_MD_CHARS)
+              + `\n\n…(truncated — full export ${fullLength.toLocaleString()} chars; `
+              + `use format='json' or format='csv' for the complete dataset)`
+          }
+
+          return {
+            content: [{ type: 'text' as const, text: content }],
+            structuredContent: { panelId: resolvedPanelId, format: 'md', content, filename: 'panel_export.md' },
           }
         }
 

@@ -37,7 +37,13 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
   },
 
   handler: async (args: GetSparkStatusArgs, context: McpServerContext) => {
-    const { sparkId } = args
+    const sparkId = args.mindId ?? args.sparkId
+    if (!sparkId) {
+      return {
+        content: [{ type: 'text' as const, text: 'Please provide mindId (the ID of the Mind to check).' }],
+        isError: true,
+      }
+    }
     const effectiveApiUrl = context.apiBaseUrl || API_BASE_URL
 
     try {
@@ -79,6 +85,8 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
             profileImageUrl: spark.profileImageUrl,
             url: sparkUrl,
           } : { id: sparkId, url: sparkUrl },
+          mindId: sparkId,
+          sparkId,
           url: sparkUrl,
           isProcessing: !isReady,
           progress: statusResult.progress,
