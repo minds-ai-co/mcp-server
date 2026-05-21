@@ -14,35 +14,47 @@ import { type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { mindLink, workspaceLink } from '../utils/links'
 
-const createGroupFromBriefSchema = z.object({
-  text: z
-    .string()
-    .min(3)
-    .max(4000)
-    .describe(
-      'Free-text brief describing the population the group should represent. ' +
-        'E.g. "California high school students grades 9-12", "Berlin Späti customers", ' +
-        '"Spanish lawyers", "management team of Coca Cola". The server runs deep web ' +
-        'research on this brief to find demographic / psychographic distributions from ' +
-        'authoritative sources, then generates personas that proportionally reflect those ' +
-        'distributions.',
-    ),
-  name: z
-    .string()
-    .max(100)
-    .optional()
-    .describe('Optional group name override. When omitted, the server names the group from the brief or the LLM detection result.'),
-  links: z
-    .array(z.string())
-    .max(10)
-    .optional()
-    .describe('Optional URLs scraped server-side for additional context (e.g. an article describing the population).'),
-  keywords: z
-    .array(z.string())
-    .max(10)
-    .optional()
-    .describe('Optional Tavily search seeds added alongside the brief.'),
-})
+const createGroupFromBriefSchema = z
+  .object({
+    brief: z
+      .string()
+      .min(3)
+      .max(4000)
+      .optional()
+      .describe(
+        'Free-text brief describing the population the group should represent. ' +
+          'E.g. "California high school students grades 9-12", "Berlin Späti customers", ' +
+          '"Spanish lawyers", "management team of Coca Cola". The server runs deep web ' +
+          'research on this brief to find demographic / psychographic distributions from ' +
+          'authoritative sources, then generates personas that proportionally reflect those ' +
+          'distributions.',
+      ),
+    text: z
+      .string()
+      .min(3)
+      .max(4000)
+      .optional()
+      .describe('Legacy alias for `brief`. Accepted for back-compat.'),
+    name: z
+      .string()
+      .max(100)
+      .optional()
+      .describe('Optional group name override. When omitted, the server names the group from the brief or the LLM detection result.'),
+    links: z
+      .array(z.string())
+      .max(10)
+      .optional()
+      .describe('Optional URLs scraped server-side for additional context (e.g. an article describing the population).'),
+    keywords: z
+      .array(z.string())
+      .max(10)
+      .optional()
+      .describe('Optional Tavily search seeds added alongside the brief.'),
+  })
+  .refine((v) => Boolean(v.brief || v.text), {
+    message: 'Provide a brief (free-text description of the group).',
+    path: ['brief'],
+  })
 
 type CreateGroupFromBriefArgs = z.infer<typeof createGroupFromBriefSchema>
 
@@ -56,6 +68,7 @@ Behavior:
 - Server runs deep web research on the brief and extracts demographic / psychographic distributions from authoritative sources (government statistics, peer-reviewed studies, industry reports — NOT blogs or marketing content).
 - Personas are generated to proportionally reflect those distributions (age, gender, region, income, etc.) — not as generic "Sarah / David / Marcus" roles.
 - The grounding (distributions, sources, summary, confidence) is persisted on the group and visible in the in-app group info slide-in and on public share links.
+- Pass the population description as \`brief\` (legacy \`text\` is also accepted).
 
 Use \`create_group\` instead when the user gives you specific Mind IDs to bag into a named group. Use this tool when the user describes a POPULATION and wants the server to invent the personas.
 
@@ -79,13 +92,14 @@ PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. 
   },
 
   handler: async (args: CreateGroupFromBriefArgs, context: McpServerContext) => {
-    const { text, name, links, keywords } = args
+    const { name, links, keywords } = args
+    const brief = args.brief ?? args.text
     const { apiCall } = createApiClient({ authToken: context.apiKey, apiBaseUrl: context.apiBaseUrl })
 
     try {
       const result = await apiCall('/api/v1/groups/from-brief', {
         method: 'POST',
-        body: JSON.stringify({ text, name, links, keywords }),
+        body: JSON.stringify({ text: brief, name, links, keywords }),
         // Override the 30s default — grounded creation runs deep web
         // research (60s ceiling) plus persona generation. Mirrors the
         // tool's own timeoutHint of 90s.

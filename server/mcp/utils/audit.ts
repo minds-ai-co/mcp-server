@@ -3,7 +3,14 @@
  * Structured logging for security monitoring and compliance
  */
 
+import { appendFileSync } from 'node:fs'
 import { logger, isProduction } from '../config'
+
+// When MCP_AUDIT_FILE is set, every audit event is also appended as
+// a single JSON line to that path. Used by scripts/test-mcp-prompts/
+// audit-eval.mjs to read ground-truth tool-call records without
+// scraping the consumer-app DOM.
+const AUDIT_FILE = process.env.MCP_AUDIT_FILE || null
 
 /**
  * Audit event types
@@ -175,6 +182,10 @@ class AuditLogger {
     }
 
     const logLine = JSON.stringify(logData)
+
+    if (AUDIT_FILE) {
+      try { appendFileSync(AUDIT_FILE, logLine + '\n') } catch { /* swallow */ }
+    }
 
     switch (event.severity) {
       case 'critical':

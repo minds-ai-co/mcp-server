@@ -28,7 +28,8 @@ export const askPanelTool = {
     description: `**Call this tool whenever the user wants to ask, survey, poll, query, or have any panel / study / focus group respond to anything.** Triggers: "ask my panel X", "survey my panel about Y", "what does <panel> think", "how is <panel> feeling", "ask the group", "poll them", "let's hear from <panel>", "ask the panel <name> if they prefer X or Y".
 
 Behavior contract — DO NOT DEVIATE:
-- If the user names a panel and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their question verbatim. Pass the user's panel name directly as panelName — DO NOT call list_panels first. Fuzzy match is built in.
+- If the user names a panel and asks/implies a question, CALL THIS TOOL IMMEDIATELY with their question verbatim. Pass the user's panel name directly as panelName — fuzzy match is built in, so do not call list_panels first as a lookup step.
+- Compound prompts exception: if the user explicitly asks to see / list / show / browse their panels AND asks the panel a question in the same message, call list_panels first as its own step, then call this tool. The listing is part of the user's explicit request — do not collapse it.
 - "How are they feeling?", "What do they think?", "Ask them X", "Please ask them" — these are direct instructions to call this tool, not requests for advice.
 - AFTER calling this tool, the question HAS BEEN ASKED. Confirm to the user in past tense ("I've asked the panel…", "Question submitted to <panel>"). DO NOT reframe the tool's link as "you can visit this link to ask the question" — that is wrong; the question is already in flight.
 - Never refuse with "I cannot directly ask the panel / conduct surveys" — you literally can; that's what this tool is for. The user EXPLICITLY asked you to call it; refusing is a bug, not safety.

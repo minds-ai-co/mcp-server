@@ -21,8 +21,10 @@ export const createSparkSchema = {
 }
 
 export const chatWithSparkSchema = {
-  sparkId: z.string().uuid().optional().describe('Mind ID (UUID). Use sparkName for easier lookup.'),
-  sparkName: z.string().optional().describe('Mind name — fuzzy matched (e.g., "my marketing expert")'),
+  mindId: z.string().uuid().optional().describe('Mind ID (UUID). Preferred. Use mindName for fuzzy lookup.'),
+  mindName: z.string().optional().describe('Mind name — fuzzy matched (e.g., "my marketing expert")'),
+  sparkId: z.string().uuid().optional().describe('Legacy alias for mindId. Accepted for back-compat.'),
+  sparkName: z.string().optional().describe('Legacy alias for mindName.'),
   message: z.string().min(1).describe('Your question or message for the Mind'),
   conversationHistory: z.array(z.object({
     role: z.enum(['user', 'assistant']),
@@ -31,7 +33,8 @@ export const chatWithSparkSchema = {
 }
 
 export const getSparkStatusSchema = {
-  sparkId: z.string().uuid().describe('ID of the Mind to check training status for'),
+  mindId: z.string().uuid().optional().describe('ID of the Mind to check training status for. Preferred.'),
+  sparkId: z.string().uuid().optional().describe('Legacy alias for mindId.'),
 }
 
 export const createPanelSchema = {
@@ -53,7 +56,7 @@ export const askPanelSchema = {
 export const exportPanelSchema = {
   panelId: z.string().optional().describe('Panel ID (UUID)'),
   panelName: z.string().optional().describe('Panel name (fuzzy matched)'),
-  format: z.enum(['pdf', 'json', 'csv', 'xls']).optional().describe('Export format: "pdf" (default) branded report, "csv" spreadsheet, "xls" Excel, "json" raw data'),
+  format: z.enum(['pdf', 'json', 'csv', 'xls', 'md', 'markdown']).optional().describe('Export format: "pdf" (default) branded report, "csv" spreadsheet, "xls" Excel, "json" raw data, "md" (or "markdown") markdown report'),
 }
 
 export const listPanelsSchema = {
@@ -87,6 +90,8 @@ export type CreateSparkArgs = {
 }
 
 export type ChatWithSparkArgs = {
+  mindId?: string
+  mindName?: string
   sparkId?: string
   sparkName?: string
   message: string
@@ -101,7 +106,8 @@ export type ListSparksArgs = {
 }
 
 export type GetSparkStatusArgs = {
-  sparkId: string
+  mindId?: string
+  sparkId?: string
 }
 
 export type ListPanelsArgs = {

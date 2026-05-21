@@ -45,7 +45,7 @@
     },
     {
       "name": "export_panel",
-      "description": "Export / download a panel as branded PDF, CSV, Excel, or JSON. PDF is the default polished report."
+      "description": "Export / download a panel as branded PDF, Markdown, CSV, Excel, or JSON. PDF is the default polished report; Markdown ('md') is best for inline display in chat."
     },
     {
       "name": "list_groups",

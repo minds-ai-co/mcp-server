@@ -32,9 +32,7 @@ Training modes:
 
 After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.
 
-PRESENTATION CONTRACT — preserve the Mind link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
-
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
+You MUST include the returned Mind URL (structuredContent.url or the resource_link) in your reply to the user, verbatim. It is the user's path back to the live Minds workspace.`,
     inputSchema: createSparkSchema,
     annotations: {
       readOnlyHint: false,
@@ -93,21 +91,25 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         const sparkId = await pendingPromise
         logger.debug('Pending creation completed', { sparkId: sparkId.slice(0, 8) + '...' })
         const pollResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl, apiKey)
+        const sparkUrl = mindLink(publicBaseUrl, sparkId)
+        const sparkName = pollResult.spark?.name || name
         return {
-          content: [{
-            type: 'text' as const,
-            text: `✓ Spark already being created - "${name}"`,
-          }],
+          content: [
+            { type: 'text' as const, text: `✓ Mind **[${sparkName}](${sparkUrl})** already being created.\n\n[Open this Mind in the workspace →](${sparkUrl})` },
+            { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${sparkName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
+          ],
           structuredContent: {
             spark: {
               id: sparkId,
-              name: pollResult.spark?.name || name,
+              name: sparkName,
               description: pollResult.spark?.description || description,
               type: pollResult.spark?.type || type,
               discipline: pollResult.spark?.discipline || discipline,
               profileImageUrl: pollResult.spark?.profileImageUrl || '',
               systemPrompt: pollResult.systemPrompt || '',
+              url: sparkUrl,
             },
+            url: sparkUrl,
             apiBaseUrl: publicBaseUrl,
             isProcessing: pollResult.status !== 'completed' && pollResult.status !== 'idle',
             progress: pollResult.progress || 5,
@@ -134,21 +136,25 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
     if (cached && now - cached.timestamp < CACHE_TTL.SPARK_CREATION) {
       logger.debug('Duplicate spark creation detected, returning existing spark', { sparkId: cached.sparkId.slice(0, 8) + '...' })
       const pollResult = await pollSparkStatus(cached.sparkId, 1, false, effectiveApiUrl, apiKey)
+      const sparkUrl = mindLink(publicBaseUrl, cached.sparkId)
+      const sparkName = pollResult.spark?.name || name
       return {
-        content: [{
-          type: 'text' as const,
-          text: `✓ Spark already being created - "${name}"`,
-        }],
+        content: [
+          { type: 'text' as const, text: `✓ Mind **[${sparkName}](${sparkUrl})** already being created.\n\n[Open this Mind in the workspace →](${sparkUrl})` },
+          { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${sparkName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
+        ],
         structuredContent: {
           spark: {
             id: cached.sparkId,
-            name: pollResult.spark?.name || name,
+            name: sparkName,
             description: pollResult.spark?.description || description,
             type: pollResult.spark?.type || type,
             discipline: pollResult.spark?.discipline || discipline,
             profileImageUrl: pollResult.spark?.profileImageUrl || '',
             systemPrompt: pollResult.systemPrompt || '',
+            url: sparkUrl,
           },
+          url: sparkUrl,
           apiBaseUrl: publicBaseUrl,
           isProcessing: pollResult.status !== 'completed' && pollResult.status !== 'idle',
           progress: pollResult.progress || 5,
@@ -337,23 +343,30 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         // Only 'completed' means done - 'idle' means collection hasn't started yet!
         const isComplete = status === 'completed'
 
+        const sparkUrl = mindLink(publicBaseUrl, spark.id)
+        const sparkName = pollResult.spark?.name || spark.name
         return {
-          content: [{
-            type: 'text' as const,
-            text: isComplete
-              ? `✓ Created Mind **[${spark.name}](${mindLink(publicBaseUrl, spark.id)})** — ready to chat!\n\n[Open this Mind in the workspace →](${mindLink(publicBaseUrl, spark.id)})`
-              : `✓ Creating Mind **[${spark.name}](${mindLink(publicBaseUrl, spark.id)})** — training in progress (${pollResult.progress || 5}%). Use get_mind_status to track.\n\n[Open this Mind in the workspace →](${mindLink(publicBaseUrl, spark.id)})`,
-          }],
+          content: [
+            {
+              type: 'text' as const,
+              text: isComplete
+                ? `✓ Created Mind **[${sparkName}](${sparkUrl})** — ready to chat!\n\n[Open this Mind in the workspace →](${sparkUrl})`
+                : `✓ Creating Mind **[${sparkName}](${sparkUrl})** — training in progress (${pollResult.progress || 5}%). Use get_mind_status to track.\n\n[Open this Mind in the workspace →](${sparkUrl})`,
+            },
+            { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${sparkName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
+          ],
           structuredContent: {
             spark: {
               id: spark.id,
-              name: pollResult.spark?.name || spark.name,
+              name: sparkName,
               description: pollResult.spark?.description || spark.description,
               type: pollResult.spark?.type || spark.type,
               discipline: pollResult.spark?.discipline || spark.discipline || profile.discipline,
               profileImageUrl: pollResult.spark?.profileImageUrl || spark.profileImageUrl || profile.imageUrl,
               systemPrompt: pollResult.systemPrompt || '',
+              url: sparkUrl,
             },
+            url: sparkUrl,
             apiBaseUrl: publicBaseUrl,
             isProcessing: !isComplete,
             progress: isComplete ? 100 : (pollResult.progress || 5),
@@ -389,11 +402,15 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       resolveCreation!(spark.id)
       pendingCreations.delete(cacheKey)
 
+      const sparkUrl = mindLink(context.publicBaseUrl, spark.id)
       return {
-        content: [{
-          type: 'text' as const,
-          text: `✓ Created Mind **[${spark.name}](${mindLink(context.publicBaseUrl, spark.id)})**${isProcessing ? ' — training in progress (use get_mind_status to check)' : ''}\n\n[Open this Mind in the workspace →](${mindLink(context.publicBaseUrl, spark.id)})`,
-        }],
+        content: [
+          {
+            type: 'text' as const,
+            text: `✓ Created Mind **[${spark.name}](${sparkUrl})**${isProcessing ? ' — training in progress (use get_mind_status to check)' : ''}\n\n[Open this Mind in the workspace →](${sparkUrl})`,
+          },
+          { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${spark.name}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
+        ],
         structuredContent: {
           spark: {
             id: spark.id,
@@ -402,7 +419,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             type: spark.type,
             discipline: spark.discipline,
             profileImageUrl: spark.profileImageUrl,
+            url: sparkUrl,
           },
+          url: sparkUrl,
           isProcessing,
           progress: isProcessing ? 5 : 100,
           status: isProcessing ? 'running' : 'completed',
