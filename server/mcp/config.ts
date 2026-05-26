@@ -148,8 +148,13 @@ export const RATE_LIMIT_CONFIG = {
 export const TIMEOUT_CONFIG = {
   /** Default timeout for API calls */
   DEFAULT_API_TIMEOUT: 30000,          // 30 seconds
-  /** Timeout for spark creation */
-  SPARK_CREATION_TIMEOUT: 60000,       // 60 seconds
+  /** Timeout for spark creation.
+   *  Cold Nitro container + first Prisma pool + LLM profile generation
+   *  has been observed at ~65s on DO App Platform preview environments,
+   *  which used to trip at exactly 60s and cascade every e2e-flow MCP
+   *  test. 120s buys reasonable headroom for cold paths without making
+   *  a real product hang invisible to ChatGPT/Claude callers. */
+  SPARK_CREATION_TIMEOUT: 120000,      // 120 seconds
   /** Timeout for chat completion */
   CHAT_COMPLETION_TIMEOUT: 45000,      // 45 seconds
   /** Timeout for polling operations */
