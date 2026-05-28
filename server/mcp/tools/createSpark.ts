@@ -42,7 +42,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
       /** Cost indication for this operation */
       costHint: 'high',
       /** Expected execution time in milliseconds */
-      timeoutHint: 60000,
+      timeoutHint: TIMEOUT_CONFIG.SPARK_CREATION_TIMEOUT,
       /** Whether this operation requires user confirmation */
       confirmationHint: false,
     },

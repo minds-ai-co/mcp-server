@@ -180,8 +180,10 @@ export function createApiClient(config: ApiClientConfig) {
  */
 export async function validateOAuthToken(token: string, apiBaseUrl?: string): Promise<string | null> {
   const baseUrl = apiBaseUrl || API_BASE_URL
-  const timeoutMs = TIMEOUT_CONFIG.POLLING_TIMEOUT
   const isApiKey = token.startsWith('minds_') || token.startsWith('aox_')
+  const timeoutMs = isApiKey
+    ? TIMEOUT_CONFIG.TOKEN_VALIDATION_TIMEOUT
+    : TIMEOUT_CONFIG.POLLING_TIMEOUT
 
   try {
     const { controller, timeoutId } = createTimeoutController(timeoutMs)

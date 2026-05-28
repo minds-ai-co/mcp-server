@@ -16,6 +16,21 @@ export const isProduction = process.env.NODE_ENV === 'production'
 export const API_BASE_URL = 'http://localhost:3000'
 
 /**
+ * DigitalOcean preview apps have publicly routable per-PR hostnames, but the
+ * in-container localhost self-call can hang under preview test load. Keep the
+ * normal localhost default for stable environments, and only override MCP tool
+ * API calls for DO preview hosts.
+ */
+export function resolvePreviewMcpApiBaseUrl(publicBaseUrl: string): string | undefined {
+  try {
+    const url = new URL(publicBaseUrl)
+    return /\.ondigitalocean\.app(?::\d+)?$/.test(url.host) ? publicBaseUrl : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * CORS Configuration
  * Whitelist of allowed origins for MCP requests
  */
@@ -157,6 +172,8 @@ export const TIMEOUT_CONFIG = {
   SPARK_CREATION_TIMEOUT: 120000,      // 120 seconds
   /** Timeout for chat completion */
   CHAT_COMPLETION_TIMEOUT: 45000,      // 45 seconds
+  /** Timeout for cold API-key validation. Preview DBs can need a full PBKDF2 scan. */
+  TOKEN_VALIDATION_TIMEOUT: 60000,     // 60 seconds
   /** Timeout for polling operations */
   POLLING_TIMEOUT: 5000,               // 5 seconds
 } as const

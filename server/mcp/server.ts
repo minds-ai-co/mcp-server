@@ -181,15 +181,30 @@ export function createMindsServer(options: CreateMindsServerOptions = {}) {
       }
 
       // Validate the auth token to get user ID
-      // API keys (minds_/aox_) need HTTP validation via /api/v1/auth/me
-      // OAuth tokens can use direct DB validation when running in-process
+      // First-party API keys can be resolved directly when this MCP server
+      // is running inside the Nuxt app. That primes the shared API-key cache
+      // used later by legacy endpoints such as `/api/spark`, avoiding a
+      // second cold PBKDF2 table scan during `create_mind` on tiny preview
+      // containers. Standalone MCP deployments without DB access fall back
+      // to the HTTP validation path below.
       const isApiKey = apiKey.startsWith('minds_') || apiKey.startsWith('aox_')
       let userId: string | null = null
-      if (apiBaseUrl) {
+      if (isApiKey) {
+        try {
+          const { resolveMindsApiKey } = await import('~/server/utils/auth/resolveMindsApiKey')
+          const user = await resolveMindsApiKey(apiKey)
+          userId = user?.id ?? null
+        } catch (err) {
+          logger.warn('In-process API key validation unavailable, falling back to HTTP', {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+
+        if (!userId) {
+          userId = await validateOAuthTokenHttp(apiKey, apiBaseUrl)
+        }
+      } else if (apiBaseUrl) {
         userId = await validateOAuthTokenHttp(apiKey, apiBaseUrl)
-      } else if (isApiKey) {
-        // API keys require HTTP validation (DB validator only handles OAuth tokens)
-        userId = await validateOAuthTokenHttp(apiKey)
       } else {
         const result = await validateOAuthTokenDb(apiKey)
         userId = result?.userId ?? null
