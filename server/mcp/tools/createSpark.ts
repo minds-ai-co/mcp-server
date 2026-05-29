@@ -3,6 +3,7 @@
  * Creates AI personas, digital twins, and expert advisors
  */
 
+import { createHash } from 'node:crypto'
 import { createSparkSchema, type CreateSparkArgs, type McpServerContext } from '../types'
 import { pollSparkStatus, fetchWithTimeout } from '../utils/apiClient'
 import {
@@ -81,6 +82,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
     // Deduplication: Prevent duplicate spark creation within 10 seconds
     const creationKey = `${name}-${mode}-${personaContext || ''}-${contextLink || ''}`
     const cacheKey = `${authenticatedUserId || 'anonymous'}-${creationKey}`
+    const distributedIdempotencyKey = createHash('sha256').update(cacheKey).digest('hex')
     const now = Date.now()
 
     // Check if there's already a pending creation for this exact request
@@ -255,6 +257,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
         logger.debug('Step 2: Creating spark')
         const createHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
+          'X-Minds-Idempotency-Key': distributedIdempotencyKey,
         }
         if (apiKey) {
           createHeaders['Authorization'] = `Bearer ${apiKey}`
