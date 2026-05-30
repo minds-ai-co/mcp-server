@@ -33,6 +33,8 @@ Training modes:
 
 After creation, use get_mind_status to confirm the Mind is ready, then add it to a panel with create_panel for survey research, or query it directly with chat_with_mind.
 
+Training lifecycle: a Mind's id exists immediately, but the Mind is only usable once readyToChat is true. keywords/clone/link Minds start in 'queued' and train in the background (statuses: queued → running → completed | failed); 'manual' Minds are 'completed' right away. If a Mind ends in 'failed' with a retryable error, it can be retrained. Full reference: https://getminds.ai/api/sparks#mind-training-lifecycle
+
 You MUST include the returned Mind URL (structuredContent.url or the resource_link) in your reply to the user, verbatim. It is the user's path back to the live Minds workspace.`,
     inputSchema: createSparkSchema,
     annotations: {
@@ -113,7 +115,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
             },
             url: sparkUrl,
             apiBaseUrl: publicBaseUrl,
-            isProcessing: pollResult.status !== 'completed' && pollResult.status !== 'idle',
+            isProcessing: pollResult.readyToChat !== true,
             progress: pollResult.progress || 5,
             status: pollResult.status || 'running',
             message: pollResult.message || 'Exploring the web...',
@@ -158,7 +160,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
           },
           url: sparkUrl,
           apiBaseUrl: publicBaseUrl,
-          isProcessing: pollResult.status !== 'completed' && pollResult.status !== 'idle',
+          isProcessing: pollResult.readyToChat !== true,
           progress: pollResult.progress || 5,
           status: pollResult.status || 'running',
           message: pollResult.message || 'Exploring the web...',
@@ -342,9 +344,9 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
         // Peek at initial status
         const pollResult = await pollSparkStatus(spark.id, 1, false, effectiveApiUrl, apiKey)
         const status = pollResult.status || 'running'
-        logger.debug('Spark initial status', { sparkId: spark.id.slice(0, 8) + '...', status, progress: pollResult.progress || 0 })
-        // Only 'completed' means done - 'idle' means collection hasn't started yet!
-        const isComplete = status === 'completed'
+        logger.debug('Spark initial status', { sparkId: spark.id.slice(0, 8) + '...', status, readyToChat: pollResult.readyToChat === true })
+        // A mind is only usable once readyToChat is true (MIN-48).
+        const isComplete = pollResult.readyToChat === true
 
         const sparkUrl = mindLink(publicBaseUrl, spark.id)
         const sparkName = pollResult.spark?.name || spark.name
@@ -354,7 +356,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
               type: 'text' as const,
               text: isComplete
                 ? `✓ Created Mind **[${sparkName}](${sparkUrl})** — ready to chat!\n\n[Open this Mind in the workspace →](${sparkUrl})`
-                : `✓ Creating Mind **[${sparkName}](${sparkUrl})** — training in progress (${pollResult.progress || 5}%). Use get_mind_status to track.\n\n[Open this Mind in the workspace →](${sparkUrl})`,
+                : `✓ Creating Mind **[${sparkName}](${sparkUrl})** — training in progress. Use get_mind_status to track.\n\n[Open this Mind in the workspace →](${sparkUrl})`,
             },
             { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${sparkName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
           ],
@@ -398,7 +400,9 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
       })
 
       const spark = result.data
-      const isProcessing = result.processing?.queued === true
+      // MIN-48: the create response now returns a `training` block, not
+      // `processing`. A mind is processing until it is ready to chat.
+      const isProcessing = result.training?.readyToChat !== true
 
       // Store in caches
       sparkCreationCache.set(cacheKey, { sparkId: spark.id, timestamp: Date.now() })

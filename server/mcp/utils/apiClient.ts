@@ -227,9 +227,12 @@ export async function validateOAuthToken(token: string, apiBaseUrl?: string): Pr
 /** Result of polling spark status */
 export interface SparkStatusResult {
   status: string
+  /** Authoritative readiness (MIN-48): a mind is usable only when this is true. */
+  readyToChat?: boolean
   progress: number
   message: string
   knowledge?: unknown[]
+  knowledgeItemCount?: number
   spark?: SparkData | null
   systemPrompt?: string
 }
@@ -258,81 +261,114 @@ export async function pollSparkStatus(
 ): Promise<SparkStatusResult> {
   const baseUrl = apiBaseUrl || API_BASE_URL
   const timeoutMs = requestTimeout || TIMEOUT_CONFIG.POLLING_TIMEOUT
-  let lastKnowledge: unknown[] = []
   let lastSpark: SparkData | null = null
   let lastSystemPrompt: string = ''
 
+  const fetchJson = async (path: string) => {
+    const { controller, timeoutId } = createTimeoutController(timeoutMs)
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        signal: controller.signal,
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+      })
+      clearTimeout(timeoutId)
+      return res
+    } catch (err) {
+      clearTimeout(timeoutId)
+      throw err
+    }
+  }
+
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const { controller, timeoutId } = createTimeoutController(timeoutMs)
+      // MIN-48: readiness comes from the authoritative v1 training endpoint
+      // (`readyToChat`, no `idle`, no progress %), with the v1 spark detail
+      // supplying the display fields + knowledgeItemCount. Demo / ephemeral
+      // minds are owned by the demo-flow account, so the API key caller gets
+      // 403/404 from v1 — for those we fall back to the public demo-state
+      // endpoint (which grants demo-session / public access) and map its
+      // pipeline status onto readyToChat (`completed` === ready).
+      const [trainingRes, sparkRes] = await Promise.all([
+        fetchJson(`/v1/sparks/${sparkId}/training`),
+        fetchJson(`/v1/sparks/${sparkId}`),
+      ])
 
-      const response = await fetch(
-        `${baseUrl}/api/public/spark/${sparkId}/demo-state?_t=${Date.now()}`,
-        {
-          signal: controller.signal,
-          headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : undefined,
-        }
-      )
+      if (trainingRes.ok) {
+        const training = await trainingRes.json()
+        const status: string = training.status || 'running'
+        const readyToChat: boolean = training.readyToChat === true
+        const message: string = training.message || (readyToChat ? 'Ready to chat!' : 'Training in progress...')
 
-      clearTimeout(timeoutId)
+        // Spark display object is best-effort — status above is authoritative.
+        let spark: SparkData | null = lastSpark
+        let knowledgeItemCount = 0
+        if (sparkRes.ok) {
+          const sparkBody = await sparkRes.json().catch(() => ({}))
+          const d = sparkBody?.data
+          if (d) {
+            spark = {
+              id: d.id,
+              name: d.name,
+              description: d.description,
+              type: d.type,
+              discipline: d.discipline,
+              profileImageUrl: d.profileImageUrl,
+              systemPrompt: d.systemPrompt,
+            }
+            knowledgeItemCount = d.knowledgeItemCount || 0
+            lastSpark = spark
+            if (d.systemPrompt) lastSystemPrompt = d.systemPrompt
+          }
+        }
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        const errorMsg = body.statusMessage || body.message || `HTTP ${response.status}`
-        logger.warn('Spark status poll failed', {
-          sparkId: sparkId.slice(0, 8) + '...',
-          status: response.status,
-          error: errorMsg,
-        })
-        // Return immediately for non-retryable errors
-        if (response.status === 403 || response.status === 401) {
-          return { status: 'error', progress: 0, message: `Access denied: ${errorMsg}` }
+        logger.debug('Spark status poll', { sparkId: sparkId.slice(0, 8) + '...', status, readyToChat })
+
+        const terminal = readyToChat || status === 'completed' || status === 'failed'
+        if (terminal || !waitForCompletion) {
+          return { status, readyToChat, progress: readyToChat ? 100 : 0, message, knowledge: [], knowledgeItemCount, spark, systemPrompt: lastSystemPrompt }
         }
-        if (response.status === 404) {
-          return { status: 'error', progress: 0, message: `Spark not found` }
-        }
-        // Other errors: continue polling if attempts remain
+        await new Promise(resolve => setTimeout(resolve, POLLING_CONFIG.POLL_INTERVAL_MS))
         continue
       }
 
-      const data = await response.json()
-      const status = data.collectionStatus?.status || 'running'
-      const progress = data.collectionStatus?.progress || 0
-      const message = data.collectionStatus?.message || 'Processing...'
-      const knowledge = data.portfolioItems || []
-      const spark = data.spark || null
-      const systemPrompt = spark?.systemPrompt || ''
-
-      // Keep track of latest data
-      if (knowledge.length > lastKnowledge.length) {
-        lastKnowledge = knowledge
+      // Bad credentials are terminal regardless of which surface owns the mind.
+      if (trainingRes.status === 401) {
+        return { status: 'error', readyToChat: false, progress: 0, message: 'Access denied: invalid API key' }
       }
-      if (spark) lastSpark = spark
-      if (systemPrompt) lastSystemPrompt = systemPrompt
 
-      logger.debug('Spark status poll', {
-        sparkId: sparkId.slice(0, 8) + '...',
-        status,
-        progress,
-        knowledgeItems: knowledge.length,
-      })
+      // 403/404/other from v1 → try the public demo-state endpoint (demo/public).
+      const demoRes = await fetchJson(`/api/public/spark/${sparkId}/demo-state?_t=${Date.now()}`)
+      if (demoRes.ok) {
+        const data = await demoRes.json()
+        const status: string = data.collectionStatus?.status || 'running'
+        const readyToChat = status === 'completed'
+        const progress = readyToChat ? 100 : (data.collectionStatus?.progress || 0)
+        const message = data.collectionStatus?.message || 'Processing...'
+        const knowledge = data.portfolioItems || []
+        const spark: SparkData | null = data.spark || lastSpark
+        if (spark) lastSpark = spark
+        if (spark?.systemPrompt) lastSystemPrompt = spark.systemPrompt
 
-      // If completed or failed, return immediately
-      if (status === 'completed' || status === 'failed' || status === 'idle') {
-        return {
-          status,
-          progress: status === 'completed' ? 100 : progress,
-          message,
-          knowledge: lastKnowledge,
-          spark: lastSpark,
-          systemPrompt: lastSystemPrompt
+        logger.debug('Spark status poll (demo-state)', { sparkId: sparkId.slice(0, 8) + '...', status, readyToChat })
+
+        const terminal = readyToChat || status === 'failed'
+        if (terminal || !waitForCompletion) {
+          return { status, readyToChat, progress, message, knowledge, knowledgeItemCount: knowledge.length, spark, systemPrompt: lastSystemPrompt }
         }
+        await new Promise(resolve => setTimeout(resolve, POLLING_CONFIG.POLL_INTERVAL_MS))
+        continue
       }
 
-      // If not waiting for completion, return current progress
-      if (!waitForCompletion) {
-        return { status, progress, message, knowledge, spark, systemPrompt }
+      const errBody = await demoRes.json().catch(() => ({}))
+      const errorMsg = errBody.statusMessage || errBody.message || `HTTP ${demoRes.status}`
+      logger.warn('Spark status poll failed', { sparkId: sparkId.slice(0, 8) + '...', status: demoRes.status, error: errorMsg })
+      if (demoRes.status === 403 || demoRes.status === 401) {
+        return { status: 'error', readyToChat: false, progress: 0, message: `Access denied: ${errorMsg}` }
       }
+      if (demoRes.status === 404) {
+        return { status: 'error', readyToChat: false, progress: 0, message: 'Spark not found' }
+      }
+      // Other errors: continue polling if attempts remain.
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         logger.warn('Spark status poll timed out', { sparkId: sparkId.slice(0, 8) + '...' })
@@ -351,9 +387,10 @@ export async function pollSparkStatus(
   // Timeout - return last known state
   return {
     status: 'timeout',
+    readyToChat: false,
     progress: lastSpark ? -1 : 0,
     message: 'Status check timed out. Use get_mind_status to retry.',
-    knowledge: lastKnowledge,
+    knowledge: [],
     spark: lastSpark,
     systemPrompt: lastSystemPrompt
   }

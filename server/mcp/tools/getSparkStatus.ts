@@ -16,6 +16,8 @@ export const getSparkStatusTool = {
 
 Returns progress percentage, current training stage, and a link to open the Mind in the workspace. Call this after create_mind to confirm the Mind is ready before using it in chat_with_mind or create_panel.
 
+Readiness is readyToChat: a Mind is only usable once it is true. Statuses are queued → running → completed | failed (there is no 'idle'). On a 'failed' status with a retryable error, the Mind can be retrained. Full reference: https://getminds.ai/api/sparks#mind-training-lifecycle
+
 You MUST include the returned Mind URL (structuredContent.url or the resource_link) in your reply to the user, verbatim. It is the user's path back to the live Minds workspace.`,
     inputSchema: getSparkStatusSchema,
     annotations: {
@@ -47,7 +49,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
     const effectiveApiUrl = context.apiBaseUrl || API_BASE_URL
 
     try {
-      // Use the demo-state endpoint for richer progress data
+      // Reads the authoritative v1 training status + spark detail (readyToChat).
       const statusResult = await pollSparkStatus(sparkId, 1, false, effectiveApiUrl, context.apiKey, TIMEOUT_CONFIG.DEFAULT_API_TIMEOUT)
 
       // Surface API errors (403, 404) as tool errors instead of fake progress
@@ -58,7 +60,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
         }
       }
 
-      const isReady = statusResult.status === 'completed' || statusResult.status === 'idle'
+      const isReady = statusResult.readyToChat === true
       const spark = statusResult.spark
       const sparkUrl = mindLink(context.publicBaseUrl, sparkId)
 
@@ -71,7 +73,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
             type: 'text' as const,
             text: isReady
               ? `✓ ${linkedName} is ready to chat!\n\n[Open this Mind in the workspace →](${sparkUrl})`
-              : `${linkedName} — ${statusResult.status} (${statusResult.progress}%): ${statusResult.message}\n\n[Open this Mind in the workspace →](${sparkUrl})`,
+              : `${linkedName} — ${statusResult.status}: ${statusResult.message}\n\n[Open this Mind in the workspace →](${sparkUrl})`,
           },
           { type: 'resource_link' as const, uri: sparkUrl, name: `Open ${displayName}`, description: 'Open this Mind in the Minds workspace', mimeType: 'text/html', annotations: { audience: ['user'], priority: 1.0 } },
         ],
