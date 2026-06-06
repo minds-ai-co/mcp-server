@@ -1,7 +1,7 @@
 {
   "name": "mindsai-mcp-server",
-  "version": "1.0.3",
-  "description": "Minds AI MCP Server - Create AI personas, digital twins, and expert advisors",
+  "version": "2.0.0",
+  "description": "Minds AI MCP Server - Create Minds (AI experts, personas, digital twins), run research panels, and export reports",
   "type": "module",
   "main": "server/mcp/main.ts",
   "scripts": {

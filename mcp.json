@@ -8,32 +8,40 @@
   "transport": "http",
   "tools": [
     {
-      "name": "list_my_ai_personas",
-      "description": "List your AI personas (also called: experts, digital twins, consumers, respondents, characters, profiles). Supports fuzzy name search."
+      "name": "list_minds",
+      "description": "List your Minds (also called: AI personas, experts, digital twins, consumers, respondents, characters, profiles). Supports fuzzy name search."
     },
     {
-      "name": "create_ai_persona_or_digital_twin",
-      "description": "Create an AI persona / expert / digital twin / consumer character — trained on topics (keywords), a public figure (clone), or a URL (link)."
+      "name": "create_mind",
+      "description": "Create a Mind — an AI persona / expert / digital twin / consumer character — trained on topics (keywords mode), a public figure (clone mode), or a URL (link mode)."
     },
     {
-      "name": "talk_to_ai_persona",
-      "description": "Talk / message / chat with one of your AI personas. Use this for 1:1 conversations — for surveying multiple personas at once, use ask_panel."
+      "name": "chat_with_mind",
+      "description": "Talk / message / chat with one of your Minds. Use this for 1:1 conversations — to survey multiple Minds at once, use ask_panel."
     },
     {
-      "name": "check_ai_persona_training_progress",
-      "description": "Check whether an AI persona has finished training. Returns progress percentage and current stage."
+      "name": "get_mind_status",
+      "description": "Check whether a Mind has finished training. Returns the current training stage and progress percentage."
     },
     {
-      "name": "create_panel",
-      "description": "Start a research panel / study / survey / focus group with one or more groups of AI personas for comparative analysis."
+      "name": "list_groups",
+      "description": "List your groups (also called: segments, audiences, cohorts) with their member Minds."
     },
     {
-      "name": "ask_panel",
-      "description": "Ask / survey / poll a panel any question. Each persona answers; results aggregate per group (mean, dominant choice, theme clusters). Triggers: 'how do they feel', 'what does <panel> think', 'ask the group'."
+      "name": "create_group",
+      "description": "Create a named group of Minds (a segment / audience / cohort) to use as a building block for panels."
     },
     {
       "name": "list_panels",
       "description": "List your panels (also called: studies, surveys, research projects, focus groups, qual studies, conversations). Supports fuzzy name search."
+    },
+    {
+      "name": "create_panel",
+      "description": "Start a research panel / study / survey / focus group with one or more groups of Minds for comparative analysis."
+    },
+    {
+      "name": "ask_panel",
+      "description": "Ask / survey / poll a panel any question. Each Mind answers; results aggregate per group (mean, dominant choice, theme clusters). Triggers: 'how do they feel', 'what does <panel> think', 'ask the group'."
     },
     {
       "name": "get_panel_status",
@@ -46,17 +54,13 @@
     {
       "name": "export_panel",
       "description": "Export / download a panel as branded PDF, Markdown, CSV, Excel, or JSON. PDF is the default polished report; Markdown ('md') is best for inline display in chat."
-    },
-    {
-      "name": "list_groups",
-      "description": "List your groups (also called: segments, audiences, cohorts) with their member personas."
     }
   ],
   "resources": [
     {
       "name": "ai-persona-widget",
       "uri": "ui://widget/spark.html",
-      "description": "Interactive widget for creating and chatting with AI personas"
+      "description": "Interactive widget for creating and chatting with Minds"
     }
   ],
   "env": {
