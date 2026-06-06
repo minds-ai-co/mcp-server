@@ -14,6 +14,16 @@ export function chatLink(baseUrl: string, flowId: string): string {
   return `${baseUrl}/?flowId=${flowId}`
 }
 
+/** Public link to a shared panel for customer/respondent access */
+export function sharedPanelLink(baseUrl: string, shareId: string): string {
+  return `${baseUrl}/panels/shared/${shareId}`
+}
+
+/** Public link to a shared group for customer/respondent access */
+export function sharedGroupLink(baseUrl: string, shareId: string): string {
+  return `${baseUrl}/groups/shared/${shareId}`
+}
+
 /** Link to the workspace (no specific flow) */
 export function workspaceLink(baseUrl: string): string {
   return `${baseUrl}/`

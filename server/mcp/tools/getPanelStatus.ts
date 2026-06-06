@@ -9,7 +9,7 @@ import { getPanelStatusSchema, type GetPanelStatusArgs, type McpServerContext } 
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { getPanelQuestions, type PendingQuestion } from '../utils/pendingQuestions'
-import { chatLink, mindLink } from '../utils/links'
+import { chatLink, mindLink, sharedPanelLink } from '../utils/links'
 import { API_BASE_URL } from '../config'
 
 export const getPanelStatusTool = {
@@ -28,7 +28,7 @@ Call this after ask_panel to track progress, or after export_panel with format "
 
 PRESENTATION CONTRACT — when no rich widget is rendered (e.g. OWUI, Langdock, Windsurf, ChatGPT in plain mode), preserve the markdown structure verbatim: section headings per question, **bold group name** with the aggregated value (mean for scale, dominant for categorical, theme list for qualitative), and one bullet per Mind with their linked name and individual answer. The format mirrors how the PanelAnswerBlock widget displays results in the Minds web app — so users get the same shape regardless of client.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel link — they are the user's path back into the Minds platform.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel links. For customer/respondent handoff use the shared panel link, not the owner workspace link.`,
     inputSchema: getPanelStatusSchema,
     annotations: {
       readOnlyHint: true,
@@ -96,6 +96,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       // so every Mind name links to its detail page and the panel header links
       // back to the workspace — same shape the widget would show.
       const panelHref = chatLink(context.publicBaseUrl, resolvedPanelId)
+      const customerShareUrl = data.publicShareId ? sharedPanelLink(context.publicBaseUrl, data.publicShareId) : null
       const sparkLink = (id: string, name: string) => `[${name}](${mindLink(context.publicBaseUrl, id)})`
       const linkSparkByName = (name: string): string => {
         for (const g of groups) {
@@ -107,6 +108,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const lines: string[] = [
         `## [${data.name}](${panelHref})`,
         `Created: ${data.createdAt} · Messages: ${data.messageCount ?? data._count?.messages ?? 'unknown'}`,
+        customerShareUrl
+          ? `Customer share link: ${customerShareUrl}`
+          : 'Customer share link: not enabled',
         '',
         `**Groups (${groups.length}):**`,
       ]
@@ -219,7 +223,10 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         if (absoluteDownloadUrl) lines.push(`[Download](${absoluteDownloadUrl})`)
       }
 
-      lines.push('', `[Open this panel in Minds →](${panelHref})`)
+      if (customerShareUrl) {
+        lines.push('', `Customer share link: ${customerShareUrl}`)
+      }
+      lines.push(`[Open this panel in Minds →](${panelHref})`)
 
       return {
         content: [{ type: 'text' as const, text: lines.join('\n') }],
@@ -234,6 +241,10 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
           recentResults: recentCompleted.map(formatPendingQuestion),
           failedQuestions: failed.map(formatPendingQuestion),
           exportStatus: exportStatus ? { ...exportStatus, downloadUrl: absoluteDownloadUrl } : undefined,
+          isLinkSharingEnabled: data.isLinkSharingEnabled === true,
+          publicShareId: data.publicShareId || null,
+          sharedPanelUrl: customerShareUrl,
+          workspaceUrl: panelHref,
           apiBase: context.publicBaseUrl || API_BASE_URL,
           authToken: context.apiKey,
         },

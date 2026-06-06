@@ -6,7 +6,7 @@
 import { listGroupsSchema, type ListGroupsArgs, type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
-import { mindLink, workspaceLink } from '../utils/links'
+import { mindLink, sharedGroupLink, workspaceLink } from '../utils/links'
 
 export const listGroupsTool = {
   name: 'list_groups',
@@ -23,7 +23,7 @@ A group is a named collection of Minds (e.g., "Gen Z Consumers", "Marketing Expe
 
 Use this to find existing groups and their members before creating a panel with create_panel. Supports fuzzy name search.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. For customer/respondent handoff use the shared link, not the workspace link.`,
     inputSchema: listGroupsSchema,
     annotations: {
       readOnlyHint: true,
@@ -61,6 +61,9 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         sparks: (g.sparks || []).map((s: any) => ({ id: s.id, name: s.name, discipline: s.discipline })),
         currentMemberRole: g.currentMemberRole,
         isPublic: g.isPublic,
+        isLinkSharingEnabled: g.isLinkSharingEnabled === true,
+        publicShareId: g.publicShareId || null,
+        sharedGroupUrl: g.publicShareId ? sharedGroupLink(context.publicBaseUrl, g.publicShareId) : null,
       }))
 
       // Truncate to keep chat output readable; full list still ships in
@@ -71,7 +74,10 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const linkSparks = (sparks: any[]) => sparks
         .map((s: any) => s.id ? `[${s.name}](${mindLink(context.publicBaseUrl, s.id)})` : s.name)
         .join(', ') || '_empty_'
-      const rows = shown.map(g => `- **${g.name}** — ${g.sparkCount} Mind${g.sparkCount === 1 ? '' : 's'}: ${linkSparks(g.sparks)}`).join('\n')
+      const rows = shown.map(g => {
+        const shareLink = g.sharedGroupUrl ? ` — shared link: ${g.sharedGroupUrl}` : ''
+        return `- **${g.name}** — ${g.sparkCount} Mind${g.sparkCount === 1 ? '' : 's'}: ${linkSparks(g.sparks)}${shareLink}`
+      }).join('\n')
       const moreLine = more > 0
         ? `\n\n_Showing ${shown.length} of ${groupList.length}. ${more} more not shown — narrow with searchQuery._`
         : ''

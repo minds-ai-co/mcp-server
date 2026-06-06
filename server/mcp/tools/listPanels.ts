@@ -6,7 +6,7 @@
 import { listPanelsSchema, type ListPanelsArgs, type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
-import { chatLink } from '../utils/links'
+import { chatLink, sharedPanelLink } from '../utils/links'
 
 export const listPanelsTool = {
   name: 'list_panels',
@@ -23,7 +23,7 @@ A panel is a multi-Mind research conversation. Users often refer to panels by ot
 
 Use this to find a panel before calling ask_panel, get_panel_status, get_panel_analytics, or export_panel. Supports fuzzy name search.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Copy each link exactly as returned.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. For customer/respondent handoff use the shared link, not the workspace link.`,
     inputSchema: listPanelsSchema,
     annotations: {
       readOnlyHint: true,
@@ -60,6 +60,10 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         messageCount: p.messageCount || 0,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
+        isLinkSharingEnabled: p.isLinkSharingEnabled === true,
+        publicShareId: p.publicShareId || null,
+        sharedPanelUrl: p.publicShareId ? sharedPanelLink(context.publicBaseUrl, p.publicShareId) : null,
+        workspaceUrl: chatLink(context.publicBaseUrl, p.id),
         groups: (p.groups || []).map((g: any) => ({
           id: g.id,
           name: g.name,
@@ -73,8 +77,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const RENDER_LIMIT = 20
       const shown = panelList.slice(0, RENDER_LIMIT)
       const more = panelList.length - shown.length
-      const tableHeader = '| Panel | Groups | Questions | Link |\n|-------|--------|-----------|------|'
-      const tableRows = shown.map(p => `| ${p.name} | ${p.groups.length} | ${p.messageCount} | [Open](${chatLink(context.publicBaseUrl, p.id)}) |`).join('\n')
+      const tableHeader = '| Panel | Groups | Questions | Shared Link | Workspace |\n|-------|--------|-----------|-------------|-----------|'
+      const tableRows = shown.map(p => `| ${p.name} | ${p.groups.length} | ${p.messageCount} | ${p.sharedPanelUrl ? `[Share](${p.sharedPanelUrl})` : '—'} | [Open](${p.workspaceUrl}) |`).join('\n')
       const moreLine = more > 0
         ? `\n\n_Showing ${shown.length} of ${panelList.length}. ${more} more not shown — narrow with searchQuery._`
         : ''
