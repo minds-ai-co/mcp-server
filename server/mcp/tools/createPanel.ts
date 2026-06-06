@@ -9,7 +9,7 @@ import { chatLink, sharedPanelLink } from '../utils/links'
 
 interface CreatePanelArgs {
   name: string
-  groupConfigs?: Array<{ name: string; sparkIds: string[] }>
+  groupConfigs?: Array<{ name?: string; mindIds?: string[]; sparkIds?: string[] }>
   groupIds?: string[]
 }
 
@@ -51,26 +51,39 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const failedGroups: string[] = []
 
       if (args.groupConfigs?.length) {
-        for (const gc of args.groupConfigs) {
-          // Validate sparkIds are UUIDs — LLMs sometimes pass names instead of IDs
-          const invalidIds = gc.sparkIds.filter(id => !uuidRegex.test(id))
+        for (const [index, gc] of args.groupConfigs.entries()) {
+          // Accept mindIds (canonical) or sparkIds (legacy alias). Name is optional —
+          // ChatGPT submission TCs call create_panel with just mindIds and no name.
+          const mindIds = gc.mindIds ?? gc.sparkIds ?? []
+          const groupName = gc.name?.trim() || `Group ${index + 1}`
+
+          if (mindIds.length === 0) {
+            return { content: [{ type: 'text' as const, text: `Group "${groupName}" needs at least one Mind. Provide mindIds (use list_minds to find IDs).` }], isError: true }
+          }
+
+          // Validate IDs are UUIDs — LLMs sometimes pass names instead of IDs
+          const invalidIds = mindIds.filter(id => !uuidRegex.test(id))
           if (invalidIds.length > 0) {
-            return { content: [{ type: 'text' as const, text: `Invalid sparkIds: ${invalidIds.map(id => `"${id}"`).join(', ')}. Use list_minds to get spark UUIDs (e.g., "a1b2c3d4-e5f6-7890-abcd-ef1234567890").` }], isError: true }
+            return { content: [{ type: 'text' as const, text: `Invalid mindIds: ${invalidIds.map(id => `"${id}"`).join(', ')}. Use list_minds to get Mind UUIDs (e.g., "a1b2c3d4-e5f6-7890-abcd-ef1234567890").` }], isError: true }
           }
 
           try {
-            const groupResult = await apiCall('/api/v1/groups', { method: 'POST', body: JSON.stringify({ name: gc.name, sparkIds: gc.sparkIds, isLinkSharingEnabled: true }) })
+            // Internal /api/v1/groups still keys on sparkIds — only the public MCP input aliases to mindIds.
+            const groupResult = await apiCall('/api/v1/groups', {
+              method: 'POST',
+              body: JSON.stringify({ name: groupName, sparkIds: mindIds, isLinkSharingEnabled: true }),
+            })
             const groupId = groupResult.data?.id
             if (!groupId) {
-              logger.warn('[create_panel] Group creation returned no ID', { groupName: gc.name, response: JSON.stringify(groupResult).slice(0, 200) })
-              failedGroups.push(gc.name)
+              logger.warn('[create_panel] Group creation returned no ID', { groupName, response: JSON.stringify(groupResult).slice(0, 200) })
+              failedGroups.push(groupName)
               continue
             }
             allGroupIds.push(groupId)
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err)
-            logger.warn('[create_panel] Group creation failed', { groupName: gc.name, error: errMsg })
-            failedGroups.push(`${gc.name} (${errMsg})`)
+            logger.warn('[create_panel] Group creation failed', { groupName, error: errMsg })
+            failedGroups.push(`${groupName} (${errMsg})`)
           }
         }
       }
@@ -78,7 +91,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       // Don't create an empty panel if all groups failed
       if (allGroupIds.length === 0) {
         const detail = failedGroups.length > 0
-          ? `All ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}. Check that the sparkIds are valid UUIDs from list_minds.`
+          ? `All ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}. Check that the mindIds are valid UUIDs from list_minds.`
           : 'No groups specified. Provide groupConfigs or groupIds.'
         return { content: [{ type: 'text' as const, text: `Cannot create panel: ${detail}` }], isError: true }
       }

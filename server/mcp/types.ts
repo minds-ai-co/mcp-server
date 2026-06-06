@@ -40,9 +40,10 @@ export const getSparkStatusSchema = {
 export const createPanelSchema = {
   name: z.string().min(1).describe('Name for the panel (e.g., "Brand Perception Study", "Q4 Market Research")'),
   groupConfigs: z.array(z.object({
-    name: z.string().describe('Group name (e.g., "Gen Z Consumers", "Marketing Experts")'),
-    sparkIds: z.array(z.string()).describe('Mind IDs to add to this group — use list_minds to find IDs'),
-  })).optional().describe('New groups to create inline with their Mind IDs'),
+    name: z.string().optional().describe('Group name (optional — defaults to "Group N"). E.g., "Gen Z Consumers", "Marketing Experts"'),
+    mindIds: z.array(z.string()).optional().describe('Mind IDs to add to this group — use list_minds to find IDs'),
+    sparkIds: z.array(z.string()).optional().describe('Legacy alias for mindIds. Accepted for back-compat.'),
+  })).optional().describe('New groups to create inline. Each group needs mindIds (legacy: sparkIds); name is optional and defaults to "Group N".'),
   groupIds: z.array(z.string()).optional().describe('Existing group IDs to attach — use list_groups to find IDs'),
 }
 
