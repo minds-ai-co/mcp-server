@@ -15,20 +15,33 @@ export function buildWidgetMeta(publicBaseUrl: string, height: number = 500) {
     widgetOrigin = `${u.protocol}//${u.host}`
   } catch { /* fallback to getminds.ai default */ }
 
+  // Pin Supabase to the exact project origin (no wildcard). Needed for spark
+  // profile images served from `${SUPABASE_URL}/storage/v1/object/public/...`.
+  let supabaseOrigin = ''
+  try { supabaseOrigin = new URL(process.env.SUPABASE_URL || '').origin } catch { /* none configured */ }
+
+  // Origins the widget may connect to / load resources from. Vue & Three are now
+  // self-hosted under `${widgetOrigin}/embed/vendor/*`, so they load via 'self'
+  // (script-src) and the widget origin (resource lists) — no third-party CDN.
+  const connectDomains = [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', supabaseOrigin].filter(Boolean)
+  const resourceDomains = [...connectDomains, 'https://fonts.googleapis.com', 'https://fonts.gstatic.com']
+
   const cspString = [
     "default-src 'self'",
-    "script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com",
+    // 'self' lets the self-hosted Vue/Three modules load; 'unsafe-inline' is for
+    // the inlined bootstrap + widget bundle. No 'unsafe-eval', no unpkg.
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'unsafe-inline'",
-    `connect-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
-    `img-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
+    `connect-src ${connectDomains.join(' ')} data: blob:`,
+    `img-src ${connectDomains.join(' ')} data: blob:`,
     `font-src ${publicBaseUrl} https://getminds.ai https://fonts.googleapis.com https://fonts.gstatic.com data:`,
   ].join('; ')
 
   return {
     ui: {
       csp: {
-        connectDomains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.ondigitalocean.app', 'https://*.supabase.co'],
-        resourceDomains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.ondigitalocean.app', 'https://*.supabase.co', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://unpkg.com'],
+        connectDomains,
+        resourceDomains,
       },
       domain: widgetOrigin,
       prefersBorder: true,
@@ -40,8 +53,8 @@ export function buildWidgetMeta(publicBaseUrl: string, height: number = 500) {
     'openai/widgetCsp': cspString,
     // OpenAI object format (snake_case keys)
     'openai/widgetCSP': {
-      connect_domains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.ondigitalocean.app', 'https://*.supabase.co'],
-      resource_domains: [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', 'https://*.supabase.co', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      connect_domains: connectDomains,
+      resource_domains: resourceDomains,
     },
   }
 }

@@ -23,13 +23,7 @@ export const createSparkSchema = {
 export const chatWithSparkSchema = {
   mindId: z.string().uuid().optional().describe('Mind ID (UUID). Preferred. Use mindName for fuzzy lookup.'),
   mindName: z.string().optional().describe('Mind name — fuzzy matched (e.g., "my marketing expert")'),
-  sparkId: z.string().uuid().optional().describe('Legacy alias for mindId. Accepted for back-compat.'),
-  sparkName: z.string().optional().describe('Legacy alias for mindName.'),
   message: z.string().min(1).describe('Your question or message for the Mind'),
-  conversationHistory: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string(),
-  })).optional().describe('Previous messages for multi-turn context'),
 }
 
 export const getSparkStatusSchema = {
@@ -93,13 +87,9 @@ export type CreateSparkArgs = {
 export type ChatWithSparkArgs = {
   mindId?: string
   mindName?: string
-  sparkId?: string
-  sparkName?: string
+  sparkId?: string   // legacy, tolerated but not advertised
+  sparkName?: string // legacy, tolerated but not advertised
   message: string
-  conversationHistory?: Array<{
-    role: 'user' | 'assistant'
-    content: string
-  }>
 }
 
 export type ListSparksArgs = {

@@ -25,13 +25,28 @@ function buildWidgetMeta(publicBaseUrl: string) {
     widgetOrigin = `${u.protocol}//${u.host}`
   } catch { /* fallback to getminds.ai default */ }
 
-  // Raw CSP string — ChatGPT enforces this on the widget iframe
+  // Pin Supabase to the exact project origin (no wildcard) — for spark profile
+  // images served from `${SUPABASE_URL}/storage/v1/object/public/...`.
+  let supabaseOrigin = ''
+  try { supabaseOrigin = new URL(process.env.SUPABASE_URL || '').origin } catch { /* none configured */ }
+
+  // Vue & Three are self-hosted under `${widgetOrigin}/embed/vendor/*`, loaded
+  // via 'self' — no third-party CDN.
+  const connectDomains = [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', supabaseOrigin].filter(Boolean)
+  const resourceDomains = [...connectDomains, 'https://fonts.googleapis.com', 'https://fonts.gstatic.com']
+
+  // Raw CSP string — ChatGPT enforces this on the widget iframe.
+  // NOTE: This LEGACY spark.html widget (server/utils/widgets/_widgetVueApp.ts via
+  // assembleWidgetHtml) uses Vue's GLOBAL build with runtime string templates, which
+  // compile via `new Function` → 'unsafe-eval' is REQUIRED here. The active response
+  // widget (widgetMeta.ts) is vite-precompiled and drops 'unsafe-eval'. No current tool
+  // outputs spark.html (kept only for backward-compat with existing ChatGPT installs).
   const cspString = [
     "default-src 'self'",
-    "script-src 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'unsafe-inline'",
-    `connect-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
-    `img-src ${publicBaseUrl} https://getminds.ai https://*.getminds.ai https://*.ondigitalocean.app https://*.supabase.co data: blob:`,
+    `connect-src ${connectDomains.join(' ')} data: blob:`,
+    `img-src ${connectDomains.join(' ')} data: blob:`,
     `font-src ${publicBaseUrl} https://getminds.ai https://fonts.googleapis.com https://fonts.gstatic.com data:`,
   ].join('; ')
 
@@ -39,22 +54,8 @@ function buildWidgetMeta(publicBaseUrl: string) {
     // MCP Apps standard structured CSP (Claude, VS Code, Goose)
     ui: {
       csp: {
-        connectDomains: [
-          publicBaseUrl,
-          'https://getminds.ai',
-          'https://*.getminds.ai',
-          'https://*.ondigitalocean.app',
-          'https://*.supabase.co',
-        ],
-        resourceDomains: [
-          publicBaseUrl,
-          'https://getminds.ai',
-          'https://*.getminds.ai',
-          'https://*.ondigitalocean.app',
-          'https://*.supabase.co',
-          'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com',
-        ],
+        connectDomains,
+        resourceDomains,
       },
       domain: widgetOrigin,
       prefersBorder: true,

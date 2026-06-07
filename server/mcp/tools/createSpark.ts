@@ -40,7 +40,7 @@ You MUST include the returned Mind URL (structuredContent.url or the resource_li
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
-      idempotentHint: true,
+      idempotentHint: false,
       openWorldHint: true,
       /** Cost indication for this operation */
       costHint: 'high',
