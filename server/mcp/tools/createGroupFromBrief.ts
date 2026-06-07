@@ -12,7 +12,7 @@
 import { z } from 'zod'
 import { type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
-import { mindLink, workspaceLink } from '../utils/links'
+import { mindLink, sharedGroupLink, workspaceLink } from '../utils/links'
 
 const createGroupFromBriefSchema = z
   .object({
@@ -72,7 +72,9 @@ Behavior:
 
 Use \`create_group\` instead when the user gives you specific Mind IDs to bag into a named group. Use this tool when the user describes a POPULATION and wants the server to invent the personas.
 
-PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. Never strip or modify URLs from this tool's output.`,
+CUSTOMER HANDOFF CONTRACT — this tool always creates a public shared group link. For external/customer/respondent handoff, use ONLY the shared group link returned by this tool. Do not invite the recipient, add them as a group member/collaborator, create spark_group_user_members records, or tell them it was added to their account unless the human explicitly asks for account collaboration.
+
+PRESENTATION CONTRACT — preserve the shared group link and workspace link in the response verbatim. Never strip or modify URLs from this tool's output.`,
     inputSchema: createGroupFromBriefSchema,
     annotations: {
       readOnlyHint: false,
@@ -99,7 +101,7 @@ PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. 
     try {
       const result = await apiCall('/api/v1/groups/from-brief', {
         method: 'POST',
-        body: JSON.stringify({ text: brief, name, links, keywords }),
+        body: JSON.stringify({ text: brief, name, links, keywords, isLinkSharingEnabled: true }),
         // Override the 30s default — grounded creation runs deep web
         // research (60s ceiling) plus persona generation. Mirrors the
         // tool's own timeoutHint of 90s.
@@ -111,6 +113,8 @@ PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. 
       const memberLinks = (group.sparks || [])
         .map((s: any) => (s.id ? `[${s.name}](${mindLink(context.publicBaseUrl, s.id)})` : s.name))
         .join(', ')
+      const customerShareUrl = group.publicShareId ? sharedGroupLink(context.publicBaseUrl, group.publicShareId) : null
+      const workspaceUrl = workspaceLink(context.publicBaseUrl)
 
       const confidencePct = group.grounding
         ? Math.round((group.grounding.confidence ?? 0) * 100)
@@ -129,7 +133,10 @@ PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. 
               `✓ Created grounded group **${group.name}** with ${memberCount} Mind${memberCount === 1 ? '' : 's'}` +
               `${memberLinks ? `: ${memberLinks}` : ''}` +
               groundingLine +
-              `\n\n[Manage in the Minds workspace →](${workspaceLink(context.publicBaseUrl)})`,
+              (customerShareUrl
+                ? `\n\nCustomer share link (use this for external recipients; do not add them to an account): ${customerShareUrl}`
+                : '\n\nCustomer share link was not returned. Do not send a workspace link to external recipients.') +
+              `\n\n[Manage in the Minds workspace →](${workspaceUrl})`,
           },
         ],
         structuredContent: {
@@ -139,6 +146,10 @@ PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. 
             sparkCount: memberCount,
             sparks: group.sparks || [],
             grounding: group.grounding ?? null,
+            isLinkSharingEnabled: group.isLinkSharingEnabled === true,
+            publicShareId: group.publicShareId || null,
+            sharedGroupUrl: customerShareUrl,
+            workspaceUrl,
           },
         },
       }

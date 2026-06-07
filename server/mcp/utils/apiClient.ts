@@ -235,6 +235,12 @@ export interface SparkStatusResult {
   knowledgeItemCount?: number
   spark?: SparkData | null
   systemPrompt?: string
+  /**
+   * Last real training stage observed before an upstream timeout
+   * (e.g. 'running', 'collecting sources'). Lets get_mind_status report a
+   * useful stage instead of the generic "timeout" string on timeout.
+   */
+  lastKnownStatus?: string
 }
 
 /** Spark data from status poll */
@@ -263,6 +269,7 @@ export async function pollSparkStatus(
   const timeoutMs = requestTimeout || TIMEOUT_CONFIG.POLLING_TIMEOUT
   let lastSpark: SparkData | null = null
   let lastSystemPrompt: string = ''
+  let lastStatus: string | undefined
 
   const fetchJson = async (path: string) => {
     const { controller, timeoutId } = createTimeoutController(timeoutMs)
@@ -296,6 +303,7 @@ export async function pollSparkStatus(
       if (trainingRes.ok) {
         const training = await trainingRes.json()
         const status: string = training.status || 'running'
+        lastStatus = status
         const readyToChat: boolean = training.readyToChat === true
         const message: string = training.message || (readyToChat ? 'Ready to chat!' : 'Training in progress...')
 
@@ -341,6 +349,7 @@ export async function pollSparkStatus(
       if (demoRes.ok) {
         const data = await demoRes.json()
         const status: string = data.collectionStatus?.status || 'running'
+        lastStatus = status
         const readyToChat = status === 'completed'
         const progress = readyToChat ? 100 : (data.collectionStatus?.progress || 0)
         const message = data.collectionStatus?.message || 'Processing...'
@@ -392,7 +401,8 @@ export async function pollSparkStatus(
     message: 'Status check timed out. Use get_mind_status to retry.',
     knowledge: [],
     spark: lastSpark,
-    systemPrompt: lastSystemPrompt
+    systemPrompt: lastSystemPrompt,
+    lastKnownStatus: lastStatus,
   }
 }
 

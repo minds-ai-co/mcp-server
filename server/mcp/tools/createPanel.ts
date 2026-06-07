@@ -5,11 +5,11 @@ import type { McpServerContext } from '../types'
 import { createPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { logger } from '../config'
-import { chatLink } from '../utils/links'
+import { chatLink, sharedPanelLink } from '../utils/links'
 
 interface CreatePanelArgs {
   name: string
-  groupConfigs?: Array<{ name: string; sparkIds: string[] }>
+  groupConfigs?: Array<{ name?: string; mindIds?: string[]; sparkIds?: string[] }>
   groupIds?: string[]
 }
 
@@ -30,7 +30,9 @@ Workflow: first create Minds (create_mind), then group them here into a panel, t
 
 You can create new groups inline (provide groupConfigs with names and Mind IDs) or attach existing groups by ID (use list_groups to find them). Use list_minds to get Mind IDs.
 
-PRESENTATION CONTRACT — preserve the panel link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+CUSTOMER HANDOFF CONTRACT — this tool always creates a public shared panel link. For external/customer/respondent handoff, use ONLY the shared panel link returned by this tool. Do not invite the recipient, add them as a member/collaborator, create flow_members/spark_group_user_members records, or tell them it was added to their account unless the human explicitly asks for account collaboration.
+
+PRESENTATION CONTRACT — preserve the shared panel link and owner workspace link in the response verbatim. The shared panel link is for customers/respondents; the workspace link is only for the authenticated creator.
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: createPanelSchema,
@@ -49,26 +51,39 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       const failedGroups: string[] = []
 
       if (args.groupConfigs?.length) {
-        for (const gc of args.groupConfigs) {
-          // Validate sparkIds are UUIDs — LLMs sometimes pass names instead of IDs
-          const invalidIds = gc.sparkIds.filter(id => !uuidRegex.test(id))
+        for (const [index, gc] of args.groupConfigs.entries()) {
+          // Accept mindIds (canonical) or sparkIds (legacy alias). Name is optional —
+          // ChatGPT submission TCs call create_panel with just mindIds and no name.
+          const mindIds = gc.mindIds ?? gc.sparkIds ?? []
+          const groupName = gc.name?.trim() || `Group ${index + 1}`
+
+          if (mindIds.length === 0) {
+            return { content: [{ type: 'text' as const, text: `Group "${groupName}" needs at least one Mind. Provide mindIds (use list_minds to find IDs).` }], isError: true }
+          }
+
+          // Validate IDs are UUIDs — LLMs sometimes pass names instead of IDs
+          const invalidIds = mindIds.filter(id => !uuidRegex.test(id))
           if (invalidIds.length > 0) {
-            return { content: [{ type: 'text' as const, text: `Invalid sparkIds: ${invalidIds.map(id => `"${id}"`).join(', ')}. Use list_minds to get spark UUIDs (e.g., "a1b2c3d4-e5f6-7890-abcd-ef1234567890").` }], isError: true }
+            return { content: [{ type: 'text' as const, text: `Invalid mindIds: ${invalidIds.map(id => `"${id}"`).join(', ')}. Use list_minds to get Mind UUIDs (e.g., "a1b2c3d4-e5f6-7890-abcd-ef1234567890").` }], isError: true }
           }
 
           try {
-            const groupResult = await apiCall('/api/v1/groups', { method: 'POST', body: JSON.stringify({ name: gc.name, sparkIds: gc.sparkIds }) })
+            // Internal /api/v1/groups still keys on sparkIds — only the public MCP input aliases to mindIds.
+            const groupResult = await apiCall('/api/v1/groups', {
+              method: 'POST',
+              body: JSON.stringify({ name: groupName, sparkIds: mindIds, isLinkSharingEnabled: true }),
+            })
             const groupId = groupResult.data?.id
             if (!groupId) {
-              logger.warn('[create_panel] Group creation returned no ID', { groupName: gc.name, response: JSON.stringify(groupResult).slice(0, 200) })
-              failedGroups.push(gc.name)
+              logger.warn('[create_panel] Group creation returned no ID', { groupName, response: JSON.stringify(groupResult).slice(0, 200) })
+              failedGroups.push(groupName)
               continue
             }
             allGroupIds.push(groupId)
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err)
-            logger.warn('[create_panel] Group creation failed', { groupName: gc.name, error: errMsg })
-            failedGroups.push(`${gc.name} (${errMsg})`)
+            logger.warn('[create_panel] Group creation failed', { groupName, error: errMsg })
+            failedGroups.push(`${groupName} (${errMsg})`)
           }
         }
       }
@@ -76,21 +91,41 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       // Don't create an empty panel if all groups failed
       if (allGroupIds.length === 0) {
         const detail = failedGroups.length > 0
-          ? `All ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}. Check that the sparkIds are valid UUIDs from list_minds.`
+          ? `All ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}. Check that the mindIds are valid UUIDs from list_minds.`
           : 'No groups specified. Provide groupConfigs or groupIds.'
         return { content: [{ type: 'text' as const, text: `Cannot create panel: ${detail}` }], isError: true }
       }
 
-      const result = await apiCall('/api/v1/panels', { method: 'POST', body: JSON.stringify({ name: args.name, groupIds: allGroupIds }) })
+      const result = await apiCall('/api/v1/panels', { method: 'POST', body: JSON.stringify({ name: args.name, groupIds: allGroupIds, isLinkSharingEnabled: true }) })
       const panel = result.data || result
       const groupSummary = panel.groups?.map((g: any) => `${g.name} (${g.sparks?.length || 0} sparks)`).join(', ') || 'no groups'
+      const workspaceUrl = chatLink(context.publicBaseUrl, panel.id)
+      const customerShareUrl = panel.publicShareId ? sharedPanelLink(context.publicBaseUrl, panel.publicShareId) : null
 
-      let responseText = `✓ Created panel **[${panel.name}](${chatLink(context.publicBaseUrl, panel.id)})** with ${panel.groups?.length || 0} group${(panel.groups?.length || 0) === 1 ? '' : 's'}: ${groupSummary}\n\n[Open this panel in Minds →](${chatLink(context.publicBaseUrl, panel.id)})`
+      let responseText = `✓ Created panel **${panel.name}** with ${panel.groups?.length || 0} group${(panel.groups?.length || 0) === 1 ? '' : 's'}: ${groupSummary}`
+      if (customerShareUrl) {
+        responseText += `\n\nCustomer share link (use this for external recipients; do not add them to an account): ${customerShareUrl}`
+      } else {
+        responseText += '\n\nCustomer share link was not returned. Do not send the workspace link to external recipients.'
+      }
+      responseText += `\n\nOwner workspace link: ${workspaceUrl}`
       if (failedGroups.length > 0) {
         responseText += `\n\n⚠️ ${failedGroups.length} group(s) failed to create: ${failedGroups.map(n => `"${n}"`).join(', ')}`
       }
 
-      return { content: [{ type: 'text' as const, text: responseText }], structuredContent: { panelId: panel.id, name: panel.name, groups: panel.groups, failedGroups } }
+      return {
+        content: [{ type: 'text' as const, text: responseText }],
+        structuredContent: {
+          panelId: panel.id,
+          name: panel.name,
+          groups: panel.groups,
+          failedGroups,
+          isLinkSharingEnabled: panel.isLinkSharingEnabled === true,
+          publicShareId: panel.publicShareId || null,
+          sharedPanelUrl: customerShareUrl,
+          workspaceUrl,
+        },
+      }
     } catch (error) {
       return { content: [{ type: 'text' as const, text: `Error creating panel: ${error instanceof Error ? error.message : String(error)}` }], isError: true }
     }

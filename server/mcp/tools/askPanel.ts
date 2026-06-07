@@ -9,7 +9,7 @@ import { askPanelSchema } from '../types'
 import { createApiClient } from '../utils/apiClient'
 import { findBestMatch } from '../utils/fuzzyMatch'
 import { API_BASE_URL, logger } from '../config'
-import { chatLink } from '../utils/links'
+import { chatLink, sharedPanelLink } from '../utils/links'
 import {
   createPendingQuestion,
   updateTotal,
@@ -43,9 +43,9 @@ Question types are auto-classified:
 
 Requires an existing panel — call create_panel first if none exists, or list_panels to disambiguate.
 
-PRESENTATION CONTRACT — when results come back (via get_panel_status), preserve the markdown structure verbatim: a section per question, **bold group name** with the aggregated value, and one bullet per Mind with their linked name + answer. This mirrors the PanelAnswerBlock widget. The panel link returned here is the user's path back to the live Minds workspace — always show it.
+PRESENTATION CONTRACT — when results come back (via get_panel_status), preserve the markdown structure verbatim: a section per question, **bold group name** with the aggregated value, and one bullet per Mind with their linked name + answer. This mirrors the PanelAnswerBlock widget. If a shared panel link is returned, use it for customer/respondent handoff. The workspace link is only for the authenticated creator.
 
-IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel link.`,
+IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL. Always show every Mind link and the panel links.`,
     inputSchema: askPanelSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, costHint: 'medium' as const, timeoutHint: 15000, confirmationHint: false },
     _meta: {
@@ -75,6 +75,13 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       // Store panel ID in session context so the widget resource can use it
       context.setLatestPanel(resolvedPanelId)
 
+      let customerShareUrl: string | null = null
+      try {
+        const panelDetail = await apiCall(`/api/v1/panels/${resolvedPanelId}`)
+        const data = panelDetail.data || panelDetail
+        customerShareUrl = data.publicShareId ? sharedPanelLink(context.publicBaseUrl, data.publicShareId) : null
+      } catch {}
+
       // Fire SSE request in the background — don't await
       const baseUrl = context.apiBaseUrl || API_BASE_URL
       processSSEInBackground(pending.questionId, `${baseUrl}/api/v1/panels/${resolvedPanelId}/ask`, {
@@ -85,13 +92,17 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Question submitted to the panel. The Minds are answering now: _"${args.question}"_\n\nTell the user the question has been asked (past tense). Use get_panel_status next to fetch the aggregated results when they're ready.\n\n[View live progress in the Minds workspace →](${chatLink(context.publicBaseUrl, resolvedPanelId)})`,
+          text: `✓ Question submitted to the panel. The Minds are answering now: _"${args.question}"_\n\nTell the user the question has been asked (past tense). Use get_panel_status next to fetch the aggregated results when they're ready.`
+            + (customerShareUrl ? `\n\nCustomer share link: ${customerShareUrl}` : '')
+            + `\n\n[View live progress in the Minds workspace →](${chatLink(context.publicBaseUrl, resolvedPanelId)})`,
         }],
         structuredContent: {
           questionId: pending.questionId,
           panelId: resolvedPanelId,
           question: args.question,
           status: 'processing',
+          sharedPanelUrl: customerShareUrl,
+          workspaceUrl: chatLink(context.publicBaseUrl, resolvedPanelId),
           apiBase: context.publicBaseUrl || API_BASE_URL,
           authToken: context.apiKey,
         },

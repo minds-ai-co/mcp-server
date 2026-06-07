@@ -35,7 +35,7 @@ PRESENTATION CONTRACT — preserve the panel link and (when present) the downloa
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: exportPanelSchema,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true, costHint: 'high' as const, timeoutHint: 120000, confirmationHint: false },
     _meta: {
       'openai/toolInvocation/invoking': 'Exporting panel report...',
       'openai/toolInvocation/invoked': 'Report ready!',

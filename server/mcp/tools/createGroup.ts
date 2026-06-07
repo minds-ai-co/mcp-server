@@ -6,7 +6,7 @@
 import { z } from 'zod'
 import { type McpServerContext } from '../types'
 import { createApiClient } from '../utils/apiClient'
-import { mindLink, workspaceLink } from '../utils/links'
+import { mindLink, sharedGroupLink, workspaceLink } from '../utils/links'
 
 const createGroupSchema = z.object({
   name: z.string().min(1).describe('Group name (e.g., "Marketing Experts", "Gen Z Consumers")'),
@@ -27,7 +27,9 @@ Behavior contract — DO NOT DEVIATE:
 
 Groups organize Minds for panel research — e.g., "Marketing Experts" with 3 specialist Minds. Use list_minds to find Mind IDs, then group them here. Groups can be reused across multiple panels.
 
-PRESENTATION CONTRACT — preserve the workspace link in the response verbatim. The link is the user's path back to the live Minds workspace; never strip it.
+CUSTOMER HANDOFF CONTRACT — this tool always creates a public shared group link. For external/customer/respondent handoff, use ONLY the shared group link returned by this tool. Do not invite the recipient, add them as a group member/collaborator, create spark_group_user_members records, or tell them it was added to their account unless the human explicitly asks for account collaboration.
+
+PRESENTATION CONTRACT — preserve the shared group link and workspace link in the response verbatim. The shared group link is for customers/respondents; the workspace link is only for the authenticated creator.
 
 IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shorten, or rephrase any URL.`,
     inputSchema: createGroupSchema,
@@ -53,18 +55,24 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
     try {
       const result = await apiCall('/api/v1/groups', {
         method: 'POST',
-        body: JSON.stringify({ name, sparkIds }),
+        body: JSON.stringify({ name, sparkIds, isLinkSharingEnabled: true }),
       })
 
       const group = result.data || result
       const memberLinks = (group.sparks || [])
         .map((s: any) => s.id ? `[${s.name}](${mindLink(context.publicBaseUrl, s.id)})` : s.name)
         .join(', ')
+      const customerShareUrl = group.publicShareId ? sharedGroupLink(context.publicBaseUrl, group.publicShareId) : null
+      const workspaceUrl = workspaceLink(context.publicBaseUrl)
 
       return {
         content: [{
           type: 'text' as const,
-          text: `✓ Created group **${group.name}** with ${sparkIds.length} Mind${sparkIds.length === 1 ? '' : 's'}${memberLinks ? `: ${memberLinks}` : ''}\n\n[Manage in the Minds workspace →](${workspaceLink(context.publicBaseUrl)})`,
+          text: `✓ Created group **${group.name}** with ${sparkIds.length} Mind${sparkIds.length === 1 ? '' : 's'}${memberLinks ? `: ${memberLinks}` : ''}`
+            + (customerShareUrl
+              ? `\n\nCustomer share link (use this for external recipients; do not add them to an account): ${customerShareUrl}`
+              : '\n\nCustomer share link was not returned. Do not send a workspace link to external recipients.')
+            + `\n\n[Manage in the Minds workspace →](${workspaceUrl})`,
         }],
         structuredContent: {
           group: {
@@ -72,6 +80,10 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             name: group.name,
             sparkCount: sparkIds.length,
             sparks: group.sparks || [],
+            isLinkSharingEnabled: group.isLinkSharingEnabled === true,
+            publicShareId: group.publicShareId || null,
+            sharedGroupUrl: customerShareUrl,
+            workspaceUrl,
           },
         },
       }

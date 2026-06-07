@@ -122,12 +122,12 @@ export function buildAuthRequiredData(
 }
 
 /* ---------------------------------------------------------------------- *
- * Locale strings — all 7 supported languages.                            *
+ * Locale strings — supported languages.                                  *
  * Stored inline (not in i18n files) because this lives in the API tier   *
  * and gets evaluated before any user context exists.                     *
  * ---------------------------------------------------------------------- */
 
-type SupportedLang = 'en' | 'de' | 'fr' | 'es' | 'zh' | 'tr' | 'ar'
+type SupportedLang = 'en' | 'de' | 'fr' | 'es' | 'zh' | 'tr' | 'ar' | 'ja' | 'ko'
 
 interface AuthRequiredCopy {
   generic: string
@@ -200,6 +200,24 @@ const AUTH_REQUIRED_MESSAGES: Record<SupportedLang, AuthRequiredCopy> = {
     docsHint: 'دليل الإعداد:',
     anchor: 'openrouter-وopen-webui-والبوابات-المتوافقة-مع-openai',
   },
+  ja: {
+    generic: '認証が必要です。OAuthでMindsアカウントを接続するか、APIキーを指定してください。',
+    openaiResponses:
+      '認証が必要です。このMCP呼び出しはOpenAI/OpenRouterによってサーバー側で実行されるため、OAuthハンドシェイクを実行できません。ツール設定をOAuthから静的な "Authorization: Bearer minds_..." APIキーに切り替えてください。',
+    anthropic:
+      '認証が必要です。OAuthセッションの有効期限が切れている可能性があります。Mindsコネクターを切断して再接続し、再認証してください。',
+    docsHint: 'セットアップガイド:',
+    anchor: 'openrouter-open-webui-and-openai-compatible-gateways',
+  },
+  ko: {
+    generic: '인증이 필요합니다. OAuth로 Minds 계정을 연결하거나 API 키를 제공하세요.',
+    openaiResponses:
+      '인증이 필요합니다. 이 MCP 호출은 OpenAI/OpenRouter가 서버 측에서 실행하므로 OAuth 핸드셰이크를 수행할 수 없습니다. 도구 설정을 OAuth에서 정적 "Authorization: Bearer minds_..." API 키로 전환하세요.',
+    anthropic:
+      '인증이 필요합니다. OAuth 세션이 만료되었을 수 있습니다. Minds 커넥터 연결을 해제한 뒤 다시 연결하여 재인증하세요.',
+    docsHint: '설정 가이드:',
+    anchor: 'openrouter-open-webui-and-openai-compatible-gateways',
+  },
 }
 
 /**
@@ -212,7 +230,7 @@ function pickSupportedLang(acceptLanguage?: string): SupportedLang {
   const tags = acceptLanguage.toLowerCase().split(',').map(t => t.split(';')[0].trim())
   for (const tag of tags) {
     const primary = tag.split('-')[0]
-    if (primary === 'en' || primary === 'de' || primary === 'fr' || primary === 'es' || primary === 'zh' || primary === 'tr' || primary === 'ar') {
+    if (primary === 'en' || primary === 'de' || primary === 'fr' || primary === 'es' || primary === 'zh' || primary === 'tr' || primary === 'ar' || primary === 'ja' || primary === 'ko') {
       return primary as SupportedLang
     }
   }

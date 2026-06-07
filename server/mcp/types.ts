@@ -23,13 +23,7 @@ export const createSparkSchema = {
 export const chatWithSparkSchema = {
   mindId: z.string().uuid().optional().describe('Mind ID (UUID). Preferred. Use mindName for fuzzy lookup.'),
   mindName: z.string().optional().describe('Mind name — fuzzy matched (e.g., "my marketing expert")'),
-  sparkId: z.string().uuid().optional().describe('Legacy alias for mindId. Accepted for back-compat.'),
-  sparkName: z.string().optional().describe('Legacy alias for mindName.'),
   message: z.string().min(1).describe('Your question or message for the Mind'),
-  conversationHistory: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string(),
-  })).optional().describe('Previous messages for multi-turn context'),
 }
 
 export const getSparkStatusSchema = {
@@ -40,9 +34,10 @@ export const getSparkStatusSchema = {
 export const createPanelSchema = {
   name: z.string().min(1).describe('Name for the panel (e.g., "Brand Perception Study", "Q4 Market Research")'),
   groupConfigs: z.array(z.object({
-    name: z.string().describe('Group name (e.g., "Gen Z Consumers", "Marketing Experts")'),
-    sparkIds: z.array(z.string()).describe('Mind IDs to add to this group — use list_minds to find IDs'),
-  })).optional().describe('New groups to create inline with their Mind IDs'),
+    name: z.string().optional().describe('Group name (optional — defaults to "Group N"). E.g., "Gen Z Consumers", "Marketing Experts"'),
+    mindIds: z.array(z.string()).optional().describe('Mind IDs to add to this group — use list_minds to find IDs'),
+    sparkIds: z.array(z.string()).optional().describe('Legacy alias for mindIds. Accepted for back-compat.'),
+  })).optional().describe('New groups to create inline. Each group needs mindIds (legacy: sparkIds); name is optional and defaults to "Group N".'),
   groupIds: z.array(z.string()).optional().describe('Existing group IDs to attach — use list_groups to find IDs'),
 }
 
@@ -92,13 +87,9 @@ export type CreateSparkArgs = {
 export type ChatWithSparkArgs = {
   mindId?: string
   mindName?: string
-  sparkId?: string
-  sparkName?: string
+  sparkId?: string   // legacy, tolerated but not advertised
+  sparkName?: string // legacy, tolerated but not advertised
   message: string
-  conversationHistory?: Array<{
-    role: 'user' | 'assistant'
-    content: string
-  }>
 }
 
 export type ListSparksArgs = {

@@ -65,7 +65,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
   },
 
   handler: async (args: ChatWithSparkArgs, context: McpServerContext) => {
-    const { message, conversationHistory } = args
+    const { message } = args
     const sparkId = args.mindId ?? args.sparkId
     const sparkName = args.mindName ?? args.sparkName
     const { apiCall } = createApiClient({ authToken: context.apiKey, apiBaseUrl: context.apiBaseUrl })
@@ -141,14 +141,8 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
         }
       }
 
-      // Build messages array with history
-      const messages = [
-        ...(conversationHistory || []).map(msg => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        { role: 'user', content: message },
-      ]
+      // Single self-contained message — ChatGPT supplies any needed context in `message`.
+      const messages = [{ role: 'user', content: message }]
 
       const result = await apiCall(`/api/v1/sparks/${resolvedSparkId}/completion`, {
         method: 'POST',
