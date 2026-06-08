@@ -30,8 +30,8 @@ function buildWidgetMeta(publicBaseUrl: string) {
   let supabaseOrigin = ''
   try { supabaseOrigin = new URL(process.env.SUPABASE_URL || '').origin } catch { /* none configured */ }
 
-  // Vue & Three are self-hosted under `${widgetOrigin}/embed/vendor/*`, loaded
-  // via 'self' — no third-party CDN.
+  // Vue & Three are self-hosted under https://getminds.ai/embed/vendor/* (absolute
+  // URLs) — no third-party CDN.
   const connectDomains = [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', supabaseOrigin].filter(Boolean)
   const resourceDomains = [...connectDomains, 'https://fonts.googleapis.com', 'https://fonts.gstatic.com']
 
@@ -43,7 +43,9 @@ function buildWidgetMeta(publicBaseUrl: string) {
   // outputs spark.html (kept only for backward-compat with existing ChatGPT installs).
   const cspString = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    // Widget origin REQUIRED — widget runs in ChatGPT's sandbox iframe origin, so the
+    // self-hosted Vue/Three load cross-origin from this deploy's origin (see widgetMeta.ts).
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${widgetOrigin}`,
     "style-src 'unsafe-inline'",
     `connect-src ${connectDomains.join(' ')} data: blob:`,
     `img-src ${connectDomains.join(' ')} data: blob:`,

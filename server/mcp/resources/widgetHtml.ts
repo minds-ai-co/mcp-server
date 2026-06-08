@@ -45,10 +45,14 @@ function loadWidget(name: 'creation' | 'info' | 'response'): string {
 
 export function getWidgetHtml(name: 'creation' | 'info' | 'response', config: Record<string, any>): string {
   const html = loadWidget(name)
-  const apiBase = config.apiBase || 'https://getminds.ai'
+  const apiBase = (config.apiBase || 'https://getminds.ai').replace(/\/$/, '')
+  // The widget runs in ChatGPT's sandbox iframe origin, so Vue/Three must load as
+  // absolute URLs from THIS deploy's origin (which serves /embed/vendor with CORS).
+  // The build emits a __MINDS_WIDGET_ORIGIN__ placeholder; substitute the serving origin.
+  const withVendor = html.replaceAll('__MINDS_WIDGET_ORIGIN__', apiBase)
   const fontStyle = `<style>@font-face { font-family: 'Selecta'; src: url('${apiBase}/fonts/selecta-regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }</style>`
   const configScript = `${fontStyle}<script>window.__WIDGET_CONFIG__ = ${JSON.stringify(config)};</script>`
-  return html.replace('<!-- __WIDGET_CONFIG__ -->', configScript)
+  return withVendor.replace('<!-- __WIDGET_CONFIG__ -->', configScript)
 }
 
 export async function getWidgetHtmlAsync(name: 'creation' | 'info' | 'response', config: Record<string, any>): Promise<string> {

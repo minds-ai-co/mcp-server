@@ -20,17 +20,19 @@ export function buildWidgetMeta(publicBaseUrl: string, height: number = 500) {
   let supabaseOrigin = ''
   try { supabaseOrigin = new URL(process.env.SUPABASE_URL || '').origin } catch { /* none configured */ }
 
-  // Origins the widget may connect to / load resources from. Vue & Three are now
-  // self-hosted under `${widgetOrigin}/embed/vendor/*`, so they load via 'self'
-  // (script-src) and the widget origin (resource lists) — no third-party CDN.
+  // Origins the widget may connect to / load resources from. Vue & Three are
+  // self-hosted under `${widgetOrigin}/embed/vendor/*` (absolute URLs in the widget
+  // HTML, origin substituted at serve time) — no third-party CDN.
   const connectDomains = [publicBaseUrl, 'https://getminds.ai', 'https://*.getminds.ai', supabaseOrigin].filter(Boolean)
   const resourceDomains = [...connectDomains, 'https://fonts.googleapis.com', 'https://fonts.gstatic.com']
 
   const cspString = [
     "default-src 'self'",
-    // 'self' lets the self-hosted Vue/Three modules load; 'unsafe-inline' is for
-    // the inlined bootstrap + widget bundle. No 'unsafe-eval', no unpkg.
-    "script-src 'self' 'unsafe-inline'",
+    // The widget origin is REQUIRED in script-src: ChatGPT renders the widget in a
+    // sandbox iframe (*.web-sandbox.oaiusercontent.com), so 'self' is that sandbox
+    // origin — the self-hosted Vue/Three load cross-origin from this deploy's origin.
+    // 'unsafe-inline' is for the inlined bootstrap + widget bundle. No 'unsafe-eval', no unpkg.
+    `script-src 'self' 'unsafe-inline' ${widgetOrigin}`,
     "style-src 'unsafe-inline'",
     `connect-src ${connectDomains.join(' ')} data: blob:`,
     `img-src ${connectDomains.join(' ')} data: blob:`,
