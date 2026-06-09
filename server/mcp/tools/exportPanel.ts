@@ -95,6 +95,21 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
             }
           }
 
+          // No answered questions persisted yet. ask_panel is async — answers land
+          // ~1-2 min after the question is asked, so an export called right after
+          // ask_panel sees nothing. Emit an explicit pending hint instead of a bare
+          // header (which agents misreport as "the panel has no answer").
+          if (qIndex === 0) {
+            const link = chatLink(context.publicBaseUrl, resolvedPanelId)
+            const text = `# Panel: ${data.name || 'Untitled'}\n\n`
+              + `_No answered questions yet._ If a question was just asked, the Minds are still generating answers (this usually takes ~1-2 minutes). Call \`get_panel_status\` to check progress, then re-run \`export_panel\` once answers have landed.\n\n`
+              + `[Open this panel in Minds →](${link})`
+            return {
+              content: [{ type: 'text' as const, text }],
+              structuredContent: { panelId: resolvedPanelId, format: 'md', pending: true, content: '' },
+            }
+          }
+
           // Size cap: MCP responses get forwarded into LLM context windows. Anything
           // over ~100KB blows past most clients' practical limit and can blow up
           // streaming. Truncate with a clear marker so the caller knows.
@@ -136,6 +151,17 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
                 escape(answer.message || ''),
               ])
             }
+          }
+        }
+
+        // Only the header row exists — no answers persisted yet (ask_panel is async).
+        // Surface an honest pending hint rather than "✓ export ready — 0 data rows".
+        if (rows.length === 1) {
+          const link = chatLink(context.publicBaseUrl, resolvedPanelId)
+          const text = `No answered questions yet for this panel. If a question was just asked, the Minds are still generating answers (this usually takes ~1-2 minutes). Call \`get_panel_status\` to check progress, then re-run \`export_panel\` once answers have landed.\n\n[Open this panel in Minds →](${link})`
+          return {
+            content: [{ type: 'text' as const, text }],
+            structuredContent: { panelId: resolvedPanelId, format, pending: true, rows: 0 },
           }
         }
 

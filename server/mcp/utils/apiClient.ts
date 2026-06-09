@@ -295,9 +295,16 @@ export async function pollSparkStatus(
       // 403/404 from v1 — for those we fall back to the public demo-state
       // endpoint (which grants demo-session / public access) and map its
       // pipeline status onto readyToChat (`completed` === ready).
+      // NOTE: these MUST be the `/api/v1/...` Nuxt routes, not the bare
+      // `/v1/...` namespace. Bare `/v1/*` is served ONLY on the api.getminds.ai
+      // subdomain, but the MCP server calls itself via its app base
+      // (localhost:3000 / the getminds.ai app host), which serves `/api/v1/*`.
+      // Calling `/v1/...` here returned the SPA HTML, `.json()` threw, the error
+      // was swallowed, and get_mind_status fell back to its "running / 0% / still
+      // training" timeout response for every Mind — even ready ones (MIN-114).
       const [trainingRes, sparkRes] = await Promise.all([
-        fetchJson(`/v1/sparks/${sparkId}/training`),
-        fetchJson(`/v1/sparks/${sparkId}`),
+        fetchJson(`/api/v1/sparks/${sparkId}/training`),
+        fetchJson(`/api/v1/sparks/${sparkId}`),
       ])
 
       if (trainingRes.ok) {
