@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { logger } from '../utils/logger'
+
+const serviceLogger = logger.withTag('MCP')
+
 /**
  * Minds MCP Server - HTTP transport
  *
@@ -59,7 +63,7 @@ const httpServer = createServer(async (req, res) => {
       // Handle the request
       await transport.handleRequest(req, res)
     } catch (error) {
-      console.error('[MCP] Error handling request:', error)
+      serviceLogger.error('Error handling request:', error)
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Internal server error' }))
@@ -74,6 +78,6 @@ const httpServer = createServer(async (req, res) => {
 })
 
 httpServer.listen(PORT, () => {
-  console.log(`[MCP] Minds server listening on port ${PORT}`)
-  console.log(`[MCP] MCP endpoint: http://localhost:${PORT}/mcp`)
+  serviceLogger.log(`Minds server listening on port ${PORT}`)
+  serviceLogger.log(`MCP endpoint: http://localhost:${PORT}/mcp`)
 })

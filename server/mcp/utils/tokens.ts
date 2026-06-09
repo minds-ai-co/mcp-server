@@ -4,6 +4,9 @@
  */
 
 import { createHmac, randomBytes } from 'crypto'
+import { logger } from '../../utils/logger'
+
+const serviceLogger = logger.withTag('MCP Tokens')
 
 /**
  * Get the discovery secret, failing loudly if not configured in production
@@ -15,7 +18,7 @@ function getDiscoverySecret(): string {
     const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined
     if (isDev) {
       // In development, generate a random secret per process (still secure, just not persistent)
-      console.warn('[MCP Tokens] WARNING: MCP_DISCOVERY_SECRET not set. Using random secret (tokens will not persist across restarts)')
+      serviceLogger.warn('WARNING: MCP_DISCOVERY_SECRET not set. Using random secret (tokens will not persist across restarts)')
       return randomBytes(32).toString('hex')
     }
     throw new Error('MCP_DISCOVERY_SECRET environment variable is required in production')

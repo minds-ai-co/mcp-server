@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { logger } from '../utils/logger'
+
+const serviceLogger = logger.withTag('MCP')
+
 /**
  * Minds MCP Server - stdio transport
  *
@@ -30,12 +34,12 @@ async function main() {
   const apiKey = process.env.MINDSAI_API_KEY
 
   if (!apiKey) {
-    console.error('Error: MINDSAI_API_KEY environment variable is required')
-    console.error('')
-    console.error('Get your API key from https://getminds.ai/settings/api-keys')
-    console.error('')
-    console.error('Usage:')
-    console.error('  MINDSAI_API_KEY=minds_xxx npx tsx server/mcp/stdio.ts')
+    serviceLogger.error('Error: MINDSAI_API_KEY environment variable is required')
+    serviceLogger.error('')
+    serviceLogger.error('Get your API key from https://getminds.ai/settings/api-keys')
+    serviceLogger.error('')
+    serviceLogger.error('Usage:')
+    serviceLogger.error('  MINDSAI_API_KEY=minds_xxx npx tsx server/mcp/stdio.ts')
     process.exit(1)
   }
 
@@ -49,11 +53,11 @@ async function main() {
   await server.connect(transport)
 
   // Log to stderr (stdout is reserved for MCP protocol)
-  console.error('[MCP] Minds server started')
-  console.error('[MCP] Waiting for requests...')
+  serviceLogger.error('Minds server started')
+  serviceLogger.error('Waiting for requests...')
 }
 
 main().catch((error) => {
-  console.error('[MCP] Fatal error:', error)
+  serviceLogger.error('Fatal error:', error)
   process.exit(1)
 })

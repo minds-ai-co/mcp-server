@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { logger } from '../utils/logger'
+
+const serviceLogger = logger.withTag('MCP')
+
 /**
  * Minds MCP Server - HTTP Entry Point
  *
@@ -36,7 +40,7 @@ const sessions = new Map<string, Session>()
 const sessionCleanupInterval = setInterval(() => {
   const evicted = pruneIdleSessions(sessions, SESSION_TTL_MS, Date.now())
   for (const id of evicted) {
-    console.log('[MCP] Evicted idle session:', id)
+    serviceLogger.log('Evicted idle session:', id)
   }
 }, 5 * 60 * 1000)
 if (sessionCleanupInterval.unref) {
@@ -83,12 +87,12 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
       await server.connect(transport)
 
       sessions.set(newSessionId, { transport, server, lastUsedAt: Date.now() })
-      console.log('[MCP] Created session:', newSessionId)
+      serviceLogger.log('Created session:', newSessionId)
 
       // Clean up session when transport closes
       transport.onclose = () => {
         sessions.delete(newSessionId)
-        console.log('[MCP] Closed session:', newSessionId)
+        serviceLogger.log('Closed session:', newSessionId)
       }
 
       await transport.handleRequest(req, res)
@@ -101,7 +105,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
       if (session) {
         await session.transport.close()
         sessions.delete(sessionId)
-        console.log('[MCP] Deleted session:', sessionId)
+        serviceLogger.log('Deleted session:', sessionId)
         res.writeHead(200)
         res.end()
       } else {
@@ -111,7 +115,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse) {
       return
     }
   } catch (error) {
-    console.error('[MCP] Error handling request:', error)
+    serviceLogger.error('Error handling request:', error)
     if (!res.headersSent) {
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
@@ -198,7 +202,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
 const server = createServer(requestHandler)
 
 server.listen(PORT, HOST, () => {
-  console.log('[MCP] Minds server listening on http://' + HOST + ':' + PORT)
-  console.log('[MCP] MCP endpoint: http://' + HOST + ':' + PORT + '/mcp')
-  console.log('[MCP] Health check: http://' + HOST + ':' + PORT + '/health')
+  serviceLogger.log('Minds server listening on http://' + HOST + ':' + PORT)
+  serviceLogger.log('MCP endpoint: http://' + HOST + ':' + PORT + '/mcp')
+  serviceLogger.log('Health check: http://' + HOST + ':' + PORT + '/health')
 })
