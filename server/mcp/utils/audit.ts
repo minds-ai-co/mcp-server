@@ -318,9 +318,15 @@ class AuditLogger {
     error: string
     duration?: number
   }): void {
+    // `warn`, not `error`: a tool failure is a handled, returned-to-client
+    // outcome (the handler responds with isError:true), not a server fault.
+    // Sentry only captures console.error (sentry.server.config.ts levels:['error']),
+    // so `error` here floods Sentry with non-actionable noise that the
+    // expectedNoise marker can't suppress (it's a bare console string, no
+    // originalException). The audit file + logger.warn still record it.
     this.log({
       type: 'tool.failure',
-      severity: 'error',
+      severity: 'warn',
       success: false,
       ...data,
     })
