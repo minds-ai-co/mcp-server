@@ -50,6 +50,16 @@ const createGroupFromBriefSchema = z
       .max(10)
       .optional()
       .describe('Optional Tavily search seeds added alongside the brief.'),
+    files: z
+      .array(
+        z.object({
+          name: z.string().describe('File name'),
+          url: z.string().describe('Public or signed URL of an already-uploaded file'),
+        }),
+      )
+      .max(10)
+      .optional()
+      .describe('Optional already-uploaded file attachments (e.g. a research PDF) extracted server-side as additional grounding context.'),
   })
   .refine((v) => Boolean(v.brief || v.text), {
     message: 'Provide a brief (free-text description of the group).',
@@ -94,14 +104,14 @@ PRESENTATION CONTRACT — preserve the shared group link and workspace link in t
   },
 
   handler: async (args: CreateGroupFromBriefArgs, context: McpServerContext) => {
-    const { name, links, keywords } = args
+    const { name, links, keywords, files } = args
     const brief = args.brief ?? args.text
     const { apiCall } = createApiClient({ authToken: context.apiKey, apiBaseUrl: context.apiBaseUrl })
 
     try {
       const result = await apiCall('/api/v1/groups/from-brief', {
         method: 'POST',
-        body: JSON.stringify({ text: brief, name, links, keywords, isLinkSharingEnabled: true }),
+        body: JSON.stringify({ text: brief, name, links, keywords, files, isLinkSharingEnabled: true }),
         // Override the 30s default — grounded creation runs deep web
         // research (60s ceiling) plus persona generation. Mirrors the
         // tool's own timeoutHint of 90s.

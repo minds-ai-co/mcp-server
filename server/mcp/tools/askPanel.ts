@@ -19,7 +19,7 @@ import {
   markFailed,
 } from '../utils/pendingQuestions'
 
-interface AskPanelArgs { panelId?: string; panelName?: string; question: string; groupIds?: string[] }
+interface AskPanelArgs { panelId?: string; panelName?: string; question: string; groupIds?: string[]; attachments?: Array<{ url?: string; path?: string; name?: string; type?: string }> }
 
 export const askPanelTool = {
   name: 'ask_panel',
@@ -87,6 +87,7 @@ IMPORTANT: Present all URLs from this tool's output VERBATIM. Never modify, shor
       processSSEInBackground(pending.questionId, `${baseUrl}/api/v1/panels/${resolvedPanelId}/ask`, {
         question: args.question,
         groupIds: args.groupIds,
+        attachments: args.attachments,
       }, context.apiKey)
 
       return {

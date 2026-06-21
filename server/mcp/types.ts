@@ -46,6 +46,17 @@ export const askPanelSchema = {
   panelName: z.string().optional().describe('Panel name (fuzzy matched)'),
   question: z.string().min(1).describe('Research question to survey across all groups'),
   groupIds: z.array(z.string()).optional().describe('Only survey specific groups (defaults to all)'),
+  attachments: z
+    .array(
+      z.object({
+        url: z.string().optional().describe('Public or signed URL of an uploaded/remote file'),
+        path: z.string().optional().describe('Storage path of an already-uploaded file'),
+        name: z.string().optional().describe('File name'),
+        type: z.string().optional().describe('MIME type when known'),
+      }),
+    )
+    .optional()
+    .describe('Files/images (e.g. a pitch deck PDF) processed once and given to every panelist as context. Each entry needs a url or path.'),
 }
 
 export const exportPanelSchema = {
